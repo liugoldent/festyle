@@ -3,15 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
+  Artist,
+  ArtistFestivalPerformance,
   Festival,
+  FestivalPerformer,
   Place,
   TravelCategory,
   categoryMeta,
   festivals,
   getArea,
+  getArtist,
+  getArtistPerformances,
   getFestival,
   getFestivalAreas,
   getFestivalTags,
+  getPerformersForFestival,
   getPlacesForFestival,
   getTravelItemsForFestival,
   months,
@@ -234,6 +240,105 @@ function PlaceCard({ place }: { place: Place }) {
   );
 }
 
+function PerformerButton({
+  performer,
+  selected,
+  onSelect,
+}: {
+  performer: FestivalPerformer;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`performer-card ${selected ? "performer-card-active" : ""}`}
+      onClick={onSelect}
+      aria-pressed={selected}
+    >
+      <span>{performer.artist.name}</span>
+      <small>
+        {performer.dateLabel ?? "date tbd"}
+        {performer.stageLabel ? ` / ${performer.stageLabel}` : ""}
+      </small>
+    </button>
+  );
+}
+
+function ArtistFestivalCard({
+  performance,
+  onFestivalSelect,
+}: {
+  performance: ArtistFestivalPerformance;
+  onFestivalSelect: (festival: Festival) => void;
+}) {
+  const city = getArea(performance.festival.cityId);
+
+  return (
+    <button
+      type="button"
+      className="artist-festival-card"
+      onClick={() => onFestivalSelect(performance.festival)}
+    >
+      <span>{performance.festival.name}</span>
+      <small>
+        {performance.festival.dateLabel}
+        {city ? `・${city.name}` : ""} / {performance.festival.venue}
+      </small>
+      {performance.stageLabel ? <em>{performance.stageLabel}</em> : null}
+    </button>
+  );
+}
+
+function ArtistFocus({
+  artist,
+  performances,
+  onFestivalSelect,
+}: {
+  artist: Artist;
+  performances: ArtistFestivalPerformance[];
+  onFestivalSelect: (festival: Festival) => void;
+}) {
+  return (
+    <div className="artist-focus">
+      <div className="artist-focus-head">
+        <div>
+          <span>Artist Focus</span>
+          <h3>{artist.name}</h3>
+        </div>
+        <small>{performances.length} upcoming</small>
+      </div>
+      <p>{artist.summary}</p>
+      <div className="artist-tags" aria-label={`${artist.name} tags`}>
+        {artist.tags.slice(0, 6).map((tag) => (
+          <span key={tag}>#{tag}</span>
+        ))}
+      </div>
+
+      <div className="artist-upcoming">
+        <div className="artist-upcoming-heading">
+          <span>未來參加音樂祭</span>
+        </div>
+        {performances.length > 0 ? (
+          <div className="grid gap-2">
+            {performances.map((performance) => (
+              <ArtistFestivalCard
+                key={performance.id}
+                performance={performance}
+                onFestivalSelect={onFestivalSelect}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="artist-empty">
+            目前資料庫沒有登錄未來場次，可以等官方名單公布後再補進出演紀錄。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DetailPanel({
   festival,
   onFestivalSelect,
@@ -244,16 +349,24 @@ function DetailPanel({
   const festivalAreas = getFestivalAreas(festival);
   const festivalTravelItems = getTravelItemsForFestival(festival);
   const festivalPlaces = getPlacesForFestival(festival);
+  const festivalPerformers = getPerformersForFestival(festival);
   const relatedFestivals = festival.relatedFestivalIds
     .map((festivalId) => getFestival(festivalId))
     .filter((relatedFestival): relatedFestival is Festival => Boolean(relatedFestival));
   const [activeArea, setActiveArea] = useState(festival.cityId);
   const [activeCategory, setActiveCategory] = useState<TravelCategory>("fun");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(
+    festivalPerformers[0]?.artist.id ?? null,
+  );
 
   const activeAreaData = getArea(activeArea) ?? festivalAreas[0];
   const tags = getFestivalTags(festival);
   const selectedTagIsContext = isContextTag(selectedTag, activeAreaData, activeCategory);
+  const selectedArtist = selectedArtistId ? getArtist(selectedArtistId) : undefined;
+  const selectedArtistPerformances = selectedArtist
+    ? getArtistPerformances(selectedArtist.id, { upcomingOnly: true })
+    : [];
 
   const visibleTravelItems = festivalTravelItems.filter((item) => {
     const matchesArea = item.areaId === activeArea;
@@ -424,17 +537,33 @@ function DetailPanel({
           {visibleTravelItems.length > 0 ? (
             <div className="grid gap-3">
               {visibleTravelItems.map((item) => (
-              <article key={item.id} className="travel-item">
-                <span
-                  className={`travel-item-category ${categoryMeta[item.category].tone}`}
-                >
-                  {categoryMeta[item.category].label}
-                </span>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                </div>
-              </article>
+                <article key={item.id} className="travel-item">
+                  <span
+                    className={`travel-item-category ${categoryMeta[item.category].tone}`}
+                  >
+                    {categoryMeta[item.category].label}
+                  </span>
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    {item.links && item.links.length > 0 ? (
+                      <div className="travel-item-links">
+                        {item.links.map((link) => (
+                          <a
+                            key={link.href}
+                            className={`place-link place-link-${link.kind}`}
+                            href={link.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`${item.title} ${link.label}`}
+                          >
+                            {link.label}
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
               ))}
             </div>
           ) : (
@@ -446,6 +575,31 @@ function DetailPanel({
           )}
         </div>
       </section>
+
+      {festivalPerformers.length > 0 ? (
+        <section className="mt-7" aria-labelledby="performer-heading">
+          <div className="section-label" id="performer-heading">
+            出演者清單
+          </div>
+          <div className="performer-grid">
+            {festivalPerformers.map((performer) => (
+              <PerformerButton
+                key={performer.id}
+                performer={performer}
+                selected={selectedArtistId === performer.artist.id}
+                onSelect={() => setSelectedArtistId(performer.artist.id)}
+              />
+            ))}
+          </div>
+          {selectedArtist ? (
+            <ArtistFocus
+              artist={selectedArtist}
+              performances={selectedArtistPerformances}
+              onFestivalSelect={onFestivalSelect}
+            />
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mt-7" aria-labelledby="tag-heading">
         <div className="section-label" id="tag-heading">

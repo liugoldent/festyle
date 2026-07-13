@@ -46,21 +46,31 @@ test("server-renders the festival explorer", async () => {
   assert.match(html, /苗場スキー場/);
   assert.match(html, /石狩湾新港/);
   assert.match(html, /ZOZOマリンスタジアム/);
+  assert.match(html, /出演者清單/);
+  assert.match(html, /10-FEET/);
+  assert.match(html, /未來參加音樂祭/);
   assert.match(html, /琵琶湖騎腳踏車/);
   assert.match(html, /食衣住行樂/);
 });
 
 test("removes starter preview wiring", async () => {
-  const [page, layout, packageJson, css] = await Promise.all([
+  const [page, layout, packageJson, css, data] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/data.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /<FestivalExplorer \/>/);
   assert.match(layout, /title:\s*"Festyle \| 日本音樂祭探索工具"/);
   assert.match(css, /\.regional-map/);
+  assert.match(css, /\.travel-item-links/);
+  assert.match(data, /官方道案內/);
+  assert.match(data, /唐人町駅/);
+  assert.match(data, /越後湯沢駅/);
+  assert.match(data, /麻生駅/);
+  assert.match(data, /海浜幕張駅/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /SkeletonPreview|codex-preview/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview|themeColor|\bViewport\b/);

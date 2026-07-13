@@ -14,6 +14,12 @@ export type Area = {
   summary: string;
 };
 
+export type PlaceLink = {
+  label: string;
+  href: string;
+  kind: "official" | "instagram" | "map";
+};
+
 export type TravelItem = {
   id: string;
   areaId: string;
@@ -21,13 +27,8 @@ export type TravelItem = {
   title: string;
   description: string;
   tags: string[];
+  links?: PlaceLink[];
   relatedFestivalIds: string[];
-};
-
-export type PlaceLink = {
-  label: string;
-  href: string;
-  kind: "official" | "instagram" | "map";
 };
 
 export type Place = {
@@ -53,6 +54,8 @@ export type Festival = {
   officialUrl?: string;
   month: number;
   dateLabel: string;
+  startsOn?: string;
+  endsOn?: string;
   cityId: string;
   areaIds: string[];
   venue: string;
@@ -63,6 +66,33 @@ export type Festival = {
   relatedPlaceIds: string[];
   relatedFestivalIds: string[];
   description: string;
+};
+
+export type Artist = {
+  id: string;
+  slug: string;
+  name: string;
+  nameJa?: string;
+  summary: string;
+  genres: string[];
+  tags: string[];
+};
+
+export type Performance = {
+  id: string;
+  festivalId: string;
+  artistId: string;
+  dateLabel?: string;
+  stageLabel?: string;
+  note?: string;
+};
+
+export type FestivalPerformer = Performance & {
+  artist: Artist;
+};
+
+export type ArtistFestivalPerformance = Performance & {
+  festival: Festival;
 };
 
 export const months = Array.from({ length: 12 }, (_, index) => index + 1);
@@ -282,6 +312,8 @@ export const festivals: Festival[] = [
     nameJa: "京都大作戦",
     month: 7,
     dateLabel: "7月",
+    startsOn: "2026-07-04",
+    endsOn: "2026-07-05",
     cityId: "uji",
     areaIds: ["kyoto", "uji", "shiga", "biwako"],
     venue: "京都府立山城総合運動公園 太陽が丘",
@@ -314,6 +346,8 @@ export const festivals: Festival[] = [
     officialUrl: "https://numbershot.jp/2026/",
     month: 8,
     dateLabel: "8/1-8/2",
+    startsOn: "2026-08-01",
+    endsOn: "2026-08-02",
     cityId: "fukuoka",
     areaIds: ["fukuoka", "momochi", "paypay-dome", "jigyohama-beach"],
     venue: "みずほPayPayドーム福岡 / シーサイドももち海浜公園地行浜ビーチ",
@@ -344,6 +378,8 @@ export const festivals: Festival[] = [
     officialUrl: "https://www.fujirockfestival.com/",
     month: 7,
     dateLabel: "7/24-7/26",
+    startsOn: "2026-07-24",
+    endsOn: "2026-07-26",
     cityId: "yuzawa",
     areaIds: ["niigata", "yuzawa", "echigo-yuzawa", "naeba"],
     venue: "新潟県湯沢町 苗場スキー場",
@@ -373,6 +409,8 @@ export const festivals: Festival[] = [
     officialUrl: "https://rsr.wess.co.jp/2026/",
     month: 8,
     dateLabel: "8/14-8/15",
+    startsOn: "2026-08-14",
+    endsOn: "2026-08-15",
     cityId: "ishikari",
     areaIds: ["hokkaido", "sapporo", "ishikari", "otaru"],
     venue: "石狩湾新港樽川ふ頭横野外特設ステージ",
@@ -403,6 +441,8 @@ export const festivals: Festival[] = [
     officialUrl: "https://www.summersonic.com/",
     month: 8,
     dateLabel: "8/14-8/16",
+    startsOn: "2026-08-14",
+    endsOn: "2026-08-16",
     cityId: "makuhari",
     areaIds: ["chiba", "makuhari", "osaka", "expo-70"],
     venue: "ZOZOマリンスタジアム＆幕張メッセ / 万博記念公園",
@@ -473,8 +513,20 @@ export const travelItems: TravelItem[] = [
     category: "transport",
     title: "京都市區往宇治與太陽が丘",
     description:
-      "先把大方向拆成京都市區、宇治站、會場接駁三段，之後可加入當年官方交通資訊。",
-    tags: ["宇治", "宇治-行", "京都", "會場交通"],
+      "以 JR 宇治駅作為電車節點；官方 2026 道案內列出京阪宇治、近鉄寺田到會場約 15 分接駁，以及 JR 京都駅八条口到會場約 50 分臨時直行巴士。",
+    tags: ["宇治", "宇治-行", "京都", "JR宇治駅", "京阪宇治", "近鉄寺田", "會場交通"],
+    links: [
+      {
+        label: "官方道案內",
+        href: "https://kyoto-daisakusen.kyoto/26/access/",
+        kind: "official",
+      },
+      {
+        label: "太陽が丘地圖",
+        href: "https://www.google.com/maps/search/?api=1&query=%E4%BA%AC%E9%83%BD%E5%BA%9C%E7%AB%8B%E5%B1%B1%E5%9F%8E%E7%B7%8F%E5%90%88%E9%81%8B%E5%8B%95%E5%85%AC%E5%9C%92%20%E5%A4%AA%E9%99%BD%E3%81%8C%E4%B8%98",
+        kind: "map",
+      },
+    ],
     relatedFestivalIds: ["festival_kyoto_daisakusen"],
   },
   {
@@ -523,8 +575,25 @@ export const travelItems: TravelItem[] = [
     category: "transport",
     title: "市區往 PayPay Dome / 百道動線",
     description:
-      "先把動線拆成福岡機場、博多 / 天神、市區到百道與場館周邊步行，之後可補官方交通更新。",
-    tags: ["PayPay Dome", "PayPay Dome-行", "百道", "會場交通"],
+      "最近車站是福岡市地下鐵唐人町駅，3 號出口到 PayPay Dome 約步行 15 分；活動日也可留意天神高速バスターミナル、博多バスターミナル 6 / 7 號月台的臨時直行巴士。",
+    tags: ["PayPay Dome", "PayPay Dome-行", "百道", "唐人町駅", "博多", "天神", "會場交通"],
+    links: [
+      {
+        label: "官方 Access",
+        href: "https://www.softbankhawks.co.jp/stadium/access.html",
+        kind: "official",
+      },
+      {
+        label: "NUMBER SHOT",
+        href: "https://numbershot.jp/2026/",
+        kind: "official",
+      },
+      {
+        label: "會場地圖",
+        href: "https://www.google.com/maps/search/?api=1&query=%E3%81%BF%E3%81%9A%E3%81%BBPayPay%E3%83%89%E3%83%BC%E3%83%A0%E7%A6%8F%E5%B2%A1%20%E3%82%B7%E3%83%BC%E3%82%B5%E3%82%A4%E3%83%89%E3%82%82%E3%82%82%E3%81%A1%E6%B5%B7%E6%B5%9C%E5%85%AC%E5%9C%92%E5%9C%B0%E8%A1%8C%E6%B5%9C%E3%83%93%E3%83%BC%E3%83%81",
+        kind: "map",
+      },
+    ],
     relatedFestivalIds: ["festival_number_shot_2026"],
   },
   {
@@ -573,8 +642,20 @@ export const travelItems: TravelItem[] = [
     category: "transport",
     title: "越後湯沢到苗場動線",
     description:
-      "先把新幹線、越後湯沢站、會場接駁與行李安排拆成段落，之後可補官方班次更新。",
-    tags: ["越後湯沢", "越後湯沢-行", "苗場", "新幹線", "會場交通"],
+      "官方 Access 建議 JR 越後湯沢駅下車；東京駅到越後湯沢約 1.5 小時，再搭越後湯沢駅到苗場會場的接駁巴士約 40 分，混雜時可能更久。",
+    tags: ["越後湯沢", "越後湯沢-行", "苗場", "新幹線", "シャトルバス", "會場交通"],
+    links: [
+      {
+        label: "官方 Access",
+        href: "https://www.fujirockfestival.com/access/index",
+        kind: "official",
+      },
+      {
+        label: "苗場地圖",
+        href: "https://www.google.com/maps/search/?api=1&query=%E8%8B%97%E5%A0%B4%E3%82%B9%E3%82%AD%E3%83%BC%E5%A0%B4",
+        kind: "map",
+      },
+    ],
     relatedFestivalIds: ["festival_fuji_rock_2026"],
   },
   {
@@ -623,8 +704,25 @@ export const travelItems: TravelItem[] = [
     category: "transport",
     title: "札幌 / 新千歳機場到石狩會場",
     description:
-      "先把新千歳空港、札幌駅、地下鐵麻生站與會場巴士拆開，之後接官方巴士券與退場資訊。",
-    tags: ["石狩", "石狩-行", "札幌", "新千歳空港", "會場交通"],
+      "官方 Access Guide 的會場是石狩灣新港樽川ふ頭横；搭巴士可從地下鐵南北線麻生駅巴士總站到會場約 30 分，也有札幌駅、新千歳空港方向的 JTB Access Bus，需先買對應巴士券。",
+    tags: ["石狩", "石狩-行", "札幌", "麻生駅", "新千歳空港", "シャトルバス", "會場交通"],
+    links: [
+      {
+        label: "官方 Access Guide",
+        href: "https://rsr.wess.co.jp/2026/access/accessguide/",
+        kind: "official",
+      },
+      {
+        label: "巴士資訊",
+        href: "https://rsr.wess.co.jp/2026/access/accessguide/bus",
+        kind: "official",
+      },
+      {
+        label: "會場地圖",
+        href: "https://www.google.com/maps/search/?api=1&query=%E7%9F%B3%E7%8B%A9%E6%B9%BE%E6%96%B0%E6%B8%AF%E6%A8%BD%E5%B7%9D%E3%81%B5%E9%A0%AD%E6%A8%AA%E9%87%8E%E5%A4%96%E7%89%B9%E8%A8%AD%E3%82%B9%E3%83%86%E3%83%BC%E3%82%B8",
+        kind: "map",
+      },
+    ],
     relatedFestivalIds: ["festival_rising_sun_rock_2026"],
   },
   {
@@ -673,8 +771,30 @@ export const travelItems: TravelItem[] = [
     category: "transport",
     title: "海浜幕張與万博記念公園入退場",
     description:
-      "東京會場以海浜幕張站與場館步行為核心，大阪會場則先以万博記念公園站規劃入退場。",
-    tags: ["幕張", "幕張-行", "万博記念公園", "會場交通", "入退場"],
+      "東京會場最近是海浜幕張駅，幕張メッセ約步行 7 分、ZOZO マリンスタジアム約 15 分，場內規劃 ZOZO 與幕張メッセ間免費接駁；大阪會場以万博記念公園駅為最近車站。",
+    tags: ["幕張", "幕張-行", "海浜幕張駅", "万博記念公園駅", "會場交通", "入退場"],
+    links: [
+      {
+        label: "東京 INFO",
+        href: "https://www.summersonic.com/info/tokyo/",
+        kind: "official",
+      },
+      {
+        label: "大阪 INFO",
+        href: "https://www.summersonic.com/info/osaka/",
+        kind: "official",
+      },
+      {
+        label: "東京地圖",
+        href: "https://www.google.com/maps/search/?api=1&query=ZOZO%E3%83%9E%E3%83%AA%E3%83%B3%E3%82%B9%E3%82%BF%E3%82%B8%E3%82%A2%E3%83%A0%20%E5%B9%95%E5%BC%B5%E3%83%A1%E3%83%83%E3%82%BB",
+        kind: "map",
+      },
+      {
+        label: "大阪地圖",
+        href: "https://www.google.com/maps/search/?api=1&query=%E4%B8%87%E5%8D%9A%E8%A8%98%E5%BF%B5%E5%85%AC%E5%9C%92",
+        kind: "map",
+      },
+    ],
     relatedFestivalIds: ["festival_summer_sonic_2026"],
   },
   {
@@ -686,6 +806,209 @@ export const travelItems: TravelItem[] = [
       "SUMMER SONIC 適合把城市型玩法分成幕張海邊、東京市區與大阪市區，依參戰日做短時間安排。",
     tags: ["万博記念公園", "万博記念公園-樂", "幕張", "大阪", "city trip"],
     relatedFestivalIds: ["festival_summer_sonic_2026"],
+  },
+];
+
+export const artists: Artist[] = [
+  {
+    id: "artist_10_feet",
+    slug: "10-feet",
+    name: "10-FEET",
+    nameJa: "10-FEET",
+    summary:
+      "京都発のロックバンド。京都大作戦を軸に、夏フェス遠征の予定をまとめて追いやすい代表アーティスト。",
+    genres: ["rock", "punk", "melodic punk"],
+    tags: ["10-FEET", "京都", "rock", "夏フェス"],
+  },
+  {
+    id: "artist_ellegarden",
+    slug: "ellegarden",
+    name: "ELLEGARDEN",
+    nameJa: "ELLEGARDEN",
+    summary:
+      "日本のロックフェス文脈で追いやすいバンド。都市型、野外型、キャンプ型フェスを横断して整理する候補。",
+    genres: ["rock", "alternative", "punk"],
+    tags: ["ELLEGARDEN", "rock", "alternative"],
+  },
+  {
+    id: "artist_hey_smith",
+    slug: "hey-smith",
+    name: "HEY-SMITH",
+    nameJa: "HEY-SMITH",
+    summary:
+      "スカパンクを軸にしたライブバンド。夏フェスの移動日程やステージ被りを確認したい候補。",
+    genres: ["ska punk", "punk", "rock"],
+    tags: ["HEY-SMITH", "ska punk", "rock"],
+  },
+  {
+    id: "artist_man_with_a_mission",
+    slug: "man-with-a-mission",
+    name: "MAN WITH A MISSION",
+    nameJa: "MAN WITH A MISSION",
+    summary:
+      "ロックとデジタル要素を横断するバンド。大型フェスの複数日程を追うときの比較軸にしやすい。",
+    genres: ["rock", "alternative", "digital rock"],
+    tags: ["MAN WITH A MISSION", "rock", "大型フェス"],
+  },
+  {
+    id: "artist_super_beaver",
+    slug: "super-beaver",
+    name: "SUPER BEAVER",
+    nameJa: "SUPER BEAVER",
+    summary:
+      "歌と言葉を軸にしたロックバンド。都市型フェスと地方遠征の両方で予定を並べたい候補。",
+    genres: ["rock", "pop rock"],
+    tags: ["SUPER BEAVER", "rock", "pop rock"],
+  },
+  {
+    id: "artist_asian_kung_fu_generation",
+    slug: "asian-kung-fu-generation",
+    name: "ASIAN KUNG-FU GENERATION",
+    nameJa: "ASIAN KUNG-FU GENERATION",
+    summary:
+      "日本ロックの定番バンド。山型フェス、都市型フェス、北海道遠征を横断して比較しやすい。",
+    genres: ["rock", "alternative"],
+    tags: ["ASIAN KUNG-FU GENERATION", "rock", "alternative"],
+  },
+  {
+    id: "artist_hump_back",
+    slug: "hump-back",
+    name: "Hump Back",
+    nameJa: "Hump Back",
+    summary:
+      "ストレートなバンドサウンドのロックバンド。夏フェスの同日候補を拾うための登録アーティスト。",
+    genres: ["rock", "punk"],
+    tags: ["Hump Back", "rock", "punk"],
+  },
+];
+
+export const performances: Performance[] = [
+  {
+    id: "performance_kyoto_daisakusen_10_feet",
+    festivalId: "festival_kyoto_daisakusen",
+    artistId: "artist_10_feet",
+    dateLabel: "7月",
+    stageLabel: "Main stage",
+    note: "主催アーティストとして追跡",
+  },
+  {
+    id: "performance_kyoto_daisakusen_hey_smith",
+    festivalId: "festival_kyoto_daisakusen",
+    artistId: "artist_hey_smith",
+    dateLabel: "7月",
+    stageLabel: "Outdoor stage",
+  },
+  {
+    id: "performance_kyoto_daisakusen_hump_back",
+    festivalId: "festival_kyoto_daisakusen",
+    artistId: "artist_hump_back",
+    dateLabel: "7月",
+    stageLabel: "Outdoor stage",
+  },
+  {
+    id: "performance_kyoto_daisakusen_super_beaver",
+    festivalId: "festival_kyoto_daisakusen",
+    artistId: "artist_super_beaver",
+    dateLabel: "7月",
+    stageLabel: "Main stage",
+  },
+  {
+    id: "performance_number_shot_10_feet",
+    festivalId: "festival_number_shot_2026",
+    artistId: "artist_10_feet",
+    dateLabel: "8/1-8/2",
+    stageLabel: "Yamakasa / Dontaku",
+  },
+  {
+    id: "performance_number_shot_man_with_a_mission",
+    festivalId: "festival_number_shot_2026",
+    artistId: "artist_man_with_a_mission",
+    dateLabel: "8/1-8/2",
+    stageLabel: "Yamakasa / Dontaku",
+  },
+  {
+    id: "performance_number_shot_super_beaver",
+    festivalId: "festival_number_shot_2026",
+    artistId: "artist_super_beaver",
+    dateLabel: "8/1-8/2",
+    stageLabel: "Yamakasa / Dontaku",
+  },
+  {
+    id: "performance_number_shot_hump_back",
+    festivalId: "festival_number_shot_2026",
+    artistId: "artist_hump_back",
+    dateLabel: "8/1-8/2",
+    stageLabel: "Seaside stage",
+  },
+  {
+    id: "performance_fuji_rock_10_feet",
+    festivalId: "festival_fuji_rock_2026",
+    artistId: "artist_10_feet",
+    dateLabel: "7/24-7/26",
+    stageLabel: "Naeba stage",
+  },
+  {
+    id: "performance_fuji_rock_man_with_a_mission",
+    festivalId: "festival_fuji_rock_2026",
+    artistId: "artist_man_with_a_mission",
+    dateLabel: "7/24-7/26",
+    stageLabel: "Naeba stage",
+  },
+  {
+    id: "performance_fuji_rock_asian_kung_fu_generation",
+    festivalId: "festival_fuji_rock_2026",
+    artistId: "artist_asian_kung_fu_generation",
+    dateLabel: "7/24-7/26",
+    stageLabel: "Naeba stage",
+  },
+  {
+    id: "performance_rsr_10_feet",
+    festivalId: "festival_rising_sun_rock_2026",
+    artistId: "artist_10_feet",
+    dateLabel: "8/14-8/15",
+    stageLabel: "Ishikari stage",
+  },
+  {
+    id: "performance_rsr_ellegarden",
+    festivalId: "festival_rising_sun_rock_2026",
+    artistId: "artist_ellegarden",
+    dateLabel: "8/14-8/15",
+    stageLabel: "Ishikari stage",
+  },
+  {
+    id: "performance_rsr_hey_smith",
+    festivalId: "festival_rising_sun_rock_2026",
+    artistId: "artist_hey_smith",
+    dateLabel: "8/14-8/15",
+    stageLabel: "Ishikari stage",
+  },
+  {
+    id: "performance_rsr_asian_kung_fu_generation",
+    festivalId: "festival_rising_sun_rock_2026",
+    artistId: "artist_asian_kung_fu_generation",
+    dateLabel: "8/14-8/15",
+    stageLabel: "Ishikari stage",
+  },
+  {
+    id: "performance_summer_sonic_man_with_a_mission",
+    festivalId: "festival_summer_sonic_2026",
+    artistId: "artist_man_with_a_mission",
+    dateLabel: "8/14-8/16",
+    stageLabel: "Tokyo / Osaka",
+  },
+  {
+    id: "performance_summer_sonic_ellegarden",
+    festivalId: "festival_summer_sonic_2026",
+    artistId: "artist_ellegarden",
+    dateLabel: "8/14-8/16",
+    stageLabel: "Tokyo / Osaka",
+  },
+  {
+    id: "performance_summer_sonic_super_beaver",
+    festivalId: "festival_summer_sonic_2026",
+    artistId: "artist_super_beaver",
+    dateLabel: "8/14-8/16",
+    stageLabel: "Tokyo / Osaka",
   },
 ];
 
@@ -764,8 +1087,58 @@ export function getPlacesForFestival(festival: Festival) {
   return places.filter((place) => place.relatedFestivalIds.includes(festival.id));
 }
 
+export function getArtist(artistId: string) {
+  return artists.find((artist) => artist.id === artistId);
+}
+
+export function getFestivalSortDate(festival: Festival) {
+  return festival.startsOn ?? `2026-${String(festival.month).padStart(2, "0")}-01`;
+}
+
+export function getPerformersForFestival(festival: Festival) {
+  return performances
+    .filter((performance) => performance.festivalId === festival.id)
+    .map((performance) => {
+      const artist = getArtist(performance.artistId);
+
+      return artist ? { ...performance, artist } : null;
+    })
+    .filter((performer): performer is FestivalPerformer => Boolean(performer));
+}
+
+export function getArtistPerformances(
+  artistId: string,
+  options: { upcomingOnly?: boolean; today?: string } = {},
+) {
+  const today = options.today ?? new Date().toISOString().slice(0, 10);
+
+  return performances
+    .filter((performance) => performance.artistId === artistId)
+    .map((performance) => {
+      const festival = getFestival(performance.festivalId);
+
+      return festival ? { ...performance, festival } : null;
+    })
+    .filter(
+      (performance): performance is ArtistFestivalPerformance =>
+        Boolean(performance) &&
+        (!options.upcomingOnly ||
+          getFestivalSortDate(performance.festival) >= today),
+    )
+    .sort((left, right) =>
+      getFestivalSortDate(left.festival).localeCompare(
+        getFestivalSortDate(right.festival),
+      ),
+    );
+}
+
 export function getFestivalTags(festival: Festival) {
   const relatedAreas = getFestivalAreas(festival);
+  const performerTags = getPerformersForFestival(festival).flatMap((performer) => [
+    performer.artist.name,
+    ...performer.artist.tags,
+    ...performer.artist.genres,
+  ]);
   const generatedAreaTags = relatedAreas.flatMap((area) =>
     festival.travelCategoryIds.map(
       (category) => `${area.name}-${categoryMeta[category].label}`,
@@ -778,6 +1151,7 @@ export function getFestivalTags(festival: Festival) {
       ...festival.genres,
       ...festival.moodTags,
       ...generatedAreaTags,
+      ...performerTags,
       ...getTravelItemsForFestival(festival).flatMap((item) => item.tags),
       ...getPlacesForFestival(festival).flatMap((place) => place.tags),
     ]),
