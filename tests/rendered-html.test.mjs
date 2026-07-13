@@ -38,8 +38,14 @@ test("server-renders the festival explorer", async () => {
   assert.match(html, /日本音樂祭探索工具/);
   assert.match(html, /京都大作戦/);
   assert.match(html, /NUMBER SHOT2026/);
+  assert.match(html, /FUJI ROCK FESTIVAL &#x27;26/);
+  assert.match(html, /RISING SUN ROCK FESTIVAL 2026 in EZO/);
+  assert.match(html, /SUMMER SONIC 2026/);
   assert.match(html, /福岡/);
   assert.match(html, /PayPay Dome/);
+  assert.match(html, /苗場スキー場/);
+  assert.match(html, /石狩湾新港/);
+  assert.match(html, /ZOZOマリンスタジアム/);
   assert.match(html, /琵琶湖騎腳踏車/);
   assert.match(html, /食衣住行樂/);
 });
