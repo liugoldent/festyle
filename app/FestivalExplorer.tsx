@@ -10,26 +10,52 @@ import {
   Place,
   TravelCategory,
   categoryMeta,
+  artists,
   festivals,
   getArea,
   getArtist,
   getArtistPerformances,
-  getFestival,
+  getFestivalSortDate,
   getFestivalAreas,
   getFestivalTags,
   getPerformersForFestival,
   getPlacesForFestival,
+  getSimilarFestivals,
   getTravelItemsForFestival,
   months,
 } from "./data";
 
 const travelCategories = Object.keys(categoryMeta) as TravelCategory[];
+const initialPerformerCount = 12;
+const archiveStartYear = 2018;
 
-function groupFestivalsByMonth() {
+type AreaFilterOption = {
+  id: string;
+  name: string;
+  festivalCount: number;
+};
+
+type GlobalPerformerResult = {
+  artist: Artist;
+  festival: Festival;
+  performances: ArtistFestivalPerformance[];
+};
+
+function groupFestivalsByMonth(source: Festival[]) {
   return months.reduce<Record<number, Festival[]>>((acc, month) => {
-    acc[month] = festivals.filter((festival) => festival.month === month);
+    acc[month] = source
+      .filter((festival) => festival.month === month)
+      .sort(
+        (left, right) =>
+          getFestivalSortDate(left).localeCompare(getFestivalSortDate(right)) ||
+          left.name.localeCompare(right.name, "ja"),
+      );
     return acc;
   }, {});
+}
+
+function getFestivalPrefectures(festival: Festival) {
+  return getFestivalAreas(festival).filter((area) => area.type === "prefecture");
 }
 
 function getTagTarget(tag: string, festivalAreas: Area[]) {
@@ -50,6 +76,144 @@ function isContextTag(tag: string | null, area: Area | undefined, category: Trav
   }
 
   return tag === area.name || tag === `${area.name}-${categoryMeta[category].label}`;
+}
+
+function GlobalPerformerSearch({
+  onFestivalSelect,
+}: {
+  onFestivalSelect: (festival: Festival) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+
+  const results = useMemo(() => {
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    const resultMap = new Map<string, GlobalPerformerResult>();
+    const matchingArtists = artists.filter((artist) =>
+      [artist.name, artist.nameJa]
+        .filter(Boolean)
+        .some((name) => name?.toLocaleLowerCase().includes(normalizedQuery)),
+    );
+
+    for (const artist of matchingArtists) {
+      for (const performance of getArtistPerformances(artist.id)) {
+        const resultKey = `${artist.id}:${performance.festival.id}`;
+        const existingResult = resultMap.get(resultKey);
+
+        if (existingResult) {
+          existingResult.performances.push(performance);
+        } else {
+          resultMap.set(resultKey, {
+            artist,
+            festival: performance.festival,
+            performances: [performance],
+          });
+        }
+      }
+    }
+
+    return Array.from(resultMap.values()).sort(
+      (left, right) =>
+        getFestivalSortDate(left.festival).localeCompare(
+          getFestivalSortDate(right.festival),
+        ) ||
+        left.artist.name.localeCompare(right.artist.name),
+    );
+  }, [normalizedQuery]);
+
+  const resultsByMonth = useMemo(() => {
+    return results.reduce<Map<number, GlobalPerformerResult[]>>((groups, result) => {
+      const monthResults = groups.get(result.festival.month) ?? [];
+      monthResults.push(result);
+      groups.set(result.festival.month, monthResults);
+      return groups;
+    }, new Map());
+  }, [results]);
+
+  const matchedArtistCount = new Set(results.map((result) => result.artist.id)).size;
+
+  return (
+    <section className="global-performer-search" aria-labelledby="global-search-heading">
+      <div className="global-search-copy">
+        <span>Artist Finder</span>
+        <h2 id="global-search-heading">全站搜尋表演人員</h2>
+        <p>輸入藝人名稱，查看他在哪幾月參加哪些音樂祭。</p>
+      </div>
+
+      <label className="global-search-input">
+        <span aria-hidden="true">⌕</span>
+        <span className="sr-only">搜尋全站表演人員</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="例如：10-FEET、あいみょん"
+          autoComplete="off"
+        />
+        {query ? (
+          <button type="button" onClick={() => setQuery("")} aria-label="清除表演人員搜尋">
+            ×
+          </button>
+        ) : null}
+      </label>
+
+      {normalizedQuery ? (
+        <div className="global-search-results">
+          {results.length > 0 ? (
+            <>
+              <p className="global-search-summary" role="status">
+                找到 {matchedArtistCount} 位表演人員，共參加 {results.length} 個音樂祭
+              </p>
+              <div className="global-search-months">
+                {Array.from(resultsByMonth.entries()).map(([month, monthResults]) => (
+                  <section key={month} className="global-search-month-group">
+                    <div className="global-search-month-label">
+                      <strong>{month}</strong>
+                      <span>月</span>
+                    </div>
+                    <div className="global-search-result-list">
+                      {monthResults.map((result) => (
+                        <button
+                          key={`${result.artist.id}:${result.festival.id}`}
+                          type="button"
+                          className="global-search-result-card"
+                          onClick={() => {
+                            onFestivalSelect(result.festival);
+                            setQuery("");
+                          }}
+                        >
+                          <span className="global-result-artist">{result.artist.name}</span>
+                          <strong>{result.festival.name}</strong>
+                          <small>
+                            {result.performances
+                              .map(
+                                (performance) =>
+                                  `${performance.dateLabel ?? result.festival.dateLabel}${
+                                    performance.stageLabel ? `・${performance.stageLabel}` : ""
+                                  }${performance.note ? `・${performance.note}` : ""}`,
+                              )
+                              .join(" / ")}
+                          </small>
+                          <span className="global-result-action">查看音樂祭 →</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="global-search-empty" role="status">
+              找不到「{query.trim()}」的演出紀錄，請試試其他藝人名稱。
+            </div>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function MonthLabel({ month }: { month: number }) {
@@ -77,6 +241,7 @@ function FestivalCard({
 
   return (
     <button
+      id={`festival-card-${festival.id}`}
       type="button"
       onClick={onSelect}
       className={`festival-card group text-left ${selected ? "festival-card-selected" : ""}`}
@@ -84,7 +249,7 @@ function FestivalCard({
     >
       <span className="flex items-center justify-between gap-3">
         <span className="rounded-full border border-stone-300 bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-stone-600">
-          {festival.dateLabel}
+          {festival.year} / {festival.dateLabel}
         </span>
         <span className="text-xs font-semibold text-stone-500">
           {festival.genres.join(" / ")}
@@ -260,8 +425,96 @@ function PerformerButton({
       <small>
         {performer.dateLabel ?? "date tbd"}
         {performer.stageLabel ? ` / ${performer.stageLabel}` : ""}
+        {performer.note ? ` / ${performer.note}` : ""}
       </small>
     </button>
+  );
+}
+
+function PerformerList({
+  performers,
+  selectedArtistId,
+  onArtistSelect,
+}: {
+  performers: FestivalPerformer[];
+  selectedArtistId: string | null;
+  onArtistSelect: (artistId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const filteredPerformers = normalizedQuery
+    ? performers.filter((performer) =>
+        [performer.artist.name, performer.artist.nameJa]
+          .filter(Boolean)
+          .some((name) => name?.toLocaleLowerCase().includes(normalizedQuery)),
+      )
+    : performers;
+  const visiblePerformers =
+    normalizedQuery || showAll
+      ? filteredPerformers
+      : filteredPerformers.slice(0, initialPerformerCount);
+  const hiddenCount = performers.length - initialPerformerCount;
+
+  return (
+    <section className="mt-7" aria-labelledby="performer-heading">
+      <div className="performer-heading">
+        <div>
+          <div className="section-label" id="performer-heading">
+            出演者清單
+          </div>
+          <p>{performers.length} 筆演出</p>
+        </div>
+        <label className="performer-search">
+          <span className="sr-only">搜尋表演人員</span>
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜尋表演人員"
+            autoComplete="off"
+          />
+        </label>
+      </div>
+
+      {normalizedQuery ? (
+        <p className="performer-result-status" role="status">
+          找到 {filteredPerformers.length} 筆符合「{query.trim()}」的演出
+        </p>
+      ) : null}
+
+      {visiblePerformers.length > 0 ? (
+        <div className="performer-grid">
+          {visiblePerformers.map((performer) => (
+            <PerformerButton
+              key={performer.id}
+              performer={performer}
+              selected={selectedArtistId === performer.artist.id}
+              onSelect={() => onArtistSelect(performer.artist.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="performer-empty">
+          {performers.length === 0 && !normalizedQuery
+            ? "目前尚未收錄官方已公布的演出者，請查看官方網站最新公告。"
+            : "找不到符合的表演人員，請試試其他藝人名稱。"}
+        </div>
+      )}
+
+      {!normalizedQuery && hiddenCount > 0 ? (
+        <button
+          type="button"
+          className="performer-toggle"
+          onClick={() => setShowAll((current) => !current)}
+          aria-expanded={showAll}
+        >
+          {showAll ? "收合藝人" : `查看更多藝人（還有 ${hiddenCount} 筆）`}
+          <span aria-hidden="true">{showAll ? "↑" : "↓"}</span>
+        </button>
+      ) : null}
+    </section>
   );
 }
 
@@ -285,55 +538,91 @@ function ArtistFestivalCard({
         {performance.festival.dateLabel}
         {city ? `・${city.name}` : ""} / {performance.festival.venue}
       </small>
-      {performance.stageLabel ? <em>{performance.stageLabel}</em> : null}
+      {performance.stageLabel || performance.note ? (
+        <em>
+          {performance.stageLabel ?? ""}
+          {performance.note ? `${performance.stageLabel ? " / " : ""}${performance.note}` : ""}
+        </em>
+      ) : null}
     </button>
   );
 }
 
-function ArtistFocus({
+function ArtistModal({
   artist,
   performances,
   onFestivalSelect,
+  onClose,
 }: {
   artist: Artist;
   performances: ArtistFestivalPerformance[];
   onFestivalSelect: (festival: Festival) => void;
+  onClose: () => void;
 }) {
-  return (
-    <div className="artist-focus">
-      <div className="artist-focus-head">
-        <div>
-          <span>Artist Focus</span>
-          <h3>{artist.name}</h3>
-        </div>
-        <small>{performances.length} upcoming</small>
-      </div>
-      <p>{artist.summary}</p>
-      <div className="artist-tags" aria-label={`${artist.name} tags`}>
-        {artist.tags.slice(0, 6).map((tag) => (
-          <span key={tag}>#{tag}</span>
-        ))}
-      </div>
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
 
-      <div className="artist-upcoming">
-        <div className="artist-upcoming-heading">
-          <span>未來參加音樂祭</span>
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="artist-modal-backdrop" onMouseDown={onClose}>
+      <div
+        className="artist-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`artist-modal-${artist.id}`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="artist-modal-close"
+          onClick={onClose}
+          aria-label="關閉演出者資訊"
+          autoFocus
+        >
+          ×
+        </button>
+        <div className="artist-focus-head">
+          <div>
+            <span>Artist Focus</span>
+            <h3 id={`artist-modal-${artist.id}`}>{artist.name}</h3>
+          </div>
+          <small>{performances.length} upcoming</small>
         </div>
-        {performances.length > 0 ? (
-          <div className="grid gap-2">
-            {performances.map((performance) => (
-              <ArtistFestivalCard
-                key={performance.id}
-                performance={performance}
-                onFestivalSelect={onFestivalSelect}
-              />
-            ))}
+        <p>{artist.summary}</p>
+
+        <div className="artist-upcoming">
+          <div className="artist-upcoming-heading">
+            <span>未來參加音樂祭</span>
           </div>
-        ) : (
-          <div className="artist-empty">
-            目前資料庫沒有登錄未來場次，可以等官方名單公布後再補進出演紀錄。
-          </div>
-        )}
+          {performances.length > 0 ? (
+            <div className="grid gap-2">
+              {performances.map((performance) => (
+                <ArtistFestivalCard
+                  key={performance.id}
+                  performance={performance}
+                  onFestivalSelect={onFestivalSelect}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="artist-empty">
+              目前資料庫沒有登錄未來場次，可以等官方名單公布後再補進出演紀錄。
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -350,15 +639,11 @@ function DetailPanel({
   const festivalTravelItems = getTravelItemsForFestival(festival);
   const festivalPlaces = getPlacesForFestival(festival);
   const festivalPerformers = getPerformersForFestival(festival);
-  const relatedFestivals = festival.relatedFestivalIds
-    .map((festivalId) => getFestival(festivalId))
-    .filter((relatedFestival): relatedFestival is Festival => Boolean(relatedFestival));
+  const similarFestivals = getSimilarFestivals(festival);
   const [activeArea, setActiveArea] = useState(festival.cityId);
   const [activeCategory, setActiveCategory] = useState<TravelCategory>("fun");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(
-    festivalPerformers[0]?.artist.id ?? null,
-  );
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
 
   const activeAreaData = getArea(activeArea) ?? festivalAreas[0];
   const tags = getFestivalTags(festival);
@@ -374,7 +659,7 @@ function DetailPanel({
     const matchesTag = selectedTag ? item.tags.includes(selectedTag) : true;
 
     if (!selectedTag) {
-      return matchesCategory;
+      return matchesArea && matchesCategory;
     }
 
     if (selectedTagIsContext) {
@@ -390,7 +675,7 @@ function DetailPanel({
     const matchesTag = selectedTag ? place.tags.includes(selectedTag) : true;
 
     if (!selectedTag) {
-      return matchesCategory;
+      return matchesArea && matchesCategory;
     }
 
     if (selectedTagIsContext) {
@@ -426,32 +711,46 @@ function DetailPanel({
 
   return (
     <aside className="detail-panel" aria-label={`${festival.name}探索面板`}>
-      <div className="detail-kicker">Festival Focus</div>
-      <h2 className="mt-2 text-3xl font-black text-stone-950 md:text-4xl">
-        {festival.name}
-      </h2>
-      <p className="mt-3 leading-7 text-stone-700">{festival.description}</p>
+      <div className="detail-panel-summary">
+        <div className="detail-kicker">Festival Focus</div>
+        <h2 className="mt-2 text-3xl font-black text-stone-950 md:text-4xl">
+          {festival.name}
+        </h2>
+        <p className="mt-3 leading-7 text-stone-700">{festival.description}</p>
 
-      <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
-        <div className="fact-box">
-          <dt>月份</dt>
-          <dd>{festival.dateLabel}</dd>
+        <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
+          <div className="fact-box">
+            <dt>月份</dt>
+            <dd>{festival.dateLabel}</dd>
+          </div>
+          <div className="fact-box">
+            <dt>會場</dt>
+            <dd>{festival.venue}</dd>
+          </div>
+        </dl>
+        <div className="festival-external-links">
+          {festival.officialUrl ? (
+            <a
+              className="official-link"
+              href={festival.officialUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              官方網站
+            </a>
+          ) : null}
+          {festival.ticketUrl ? (
+            <a
+              className="official-link ticket-link"
+              href={festival.ticketUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              售票資訊
+            </a>
+          ) : null}
         </div>
-        <div className="fact-box">
-          <dt>會場</dt>
-          <dd>{festival.venue}</dd>
-        </div>
-      </dl>
-      {festival.officialUrl ? (
-        <a
-          className="official-link"
-          href={festival.officialUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          官方網站
-        </a>
-      ) : null}
+      </div>
 
       <section className="mt-7" aria-labelledby="map-heading">
         <div className="section-label" id="map-heading">
@@ -537,7 +836,10 @@ function DetailPanel({
           {visibleTravelItems.length > 0 ? (
             <div className="grid gap-3">
               {visibleTravelItems.map((item) => (
-                <article key={item.id} className="travel-item">
+                <article
+                  key={item.id}
+                  className={`travel-item ${item.highlights ? "travel-item-featured" : ""}`}
+                >
                   <span
                     className={`travel-item-category ${categoryMeta[item.category].tone}`}
                   >
@@ -546,6 +848,16 @@ function DetailPanel({
                   <div>
                     <h3>{item.title}</h3>
                     <p>{item.description}</p>
+                    {item.highlights && item.highlights.length > 0 ? (
+                      <dl className="travel-item-highlights">
+                        {item.highlights.map((highlight) => (
+                          <div key={highlight.label}>
+                            <dt>{highlight.label}</dt>
+                            <dd>{highlight.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
                     {item.links && item.links.length > 0 ? (
                       <div className="travel-item-links">
                         {item.links.map((link) => (
@@ -577,28 +889,23 @@ function DetailPanel({
       </section>
 
       {festivalPerformers.length > 0 ? (
-        <section className="mt-7" aria-labelledby="performer-heading">
-          <div className="section-label" id="performer-heading">
-            出演者清單
-          </div>
-          <div className="performer-grid">
-            {festivalPerformers.map((performer) => (
-              <PerformerButton
-                key={performer.id}
-                performer={performer}
-                selected={selectedArtistId === performer.artist.id}
-                onSelect={() => setSelectedArtistId(performer.artist.id)}
-              />
-            ))}
-          </div>
-          {selectedArtist ? (
-            <ArtistFocus
-              artist={selectedArtist}
-              performances={selectedArtistPerformances}
-              onFestivalSelect={onFestivalSelect}
-            />
-          ) : null}
-        </section>
+        <PerformerList
+          performers={festivalPerformers}
+          selectedArtistId={selectedArtistId}
+          onArtistSelect={setSelectedArtistId}
+        />
+      ) : null}
+
+      {selectedArtist ? (
+        <ArtistModal
+          artist={selectedArtist}
+          performances={selectedArtistPerformances}
+          onClose={() => setSelectedArtistId(null)}
+          onFestivalSelect={(nextFestival) => {
+            setSelectedArtistId(null);
+            onFestivalSelect(nextFestival);
+          }}
+        />
       ) : null}
 
       <section className="mt-7" aria-labelledby="tag-heading">
@@ -619,21 +926,25 @@ function DetailPanel({
         </div>
       </section>
 
-      {relatedFestivals.length > 0 ? (
+      {similarFestivals.length > 0 ? (
         <section className="mt-7" aria-labelledby="related-heading">
           <div className="section-label" id="related-heading">
-            關聯音樂祭
+            相似音樂祭
           </div>
+          <p className="similar-festival-explainer">
+            依舉辦月份、場地型態與音樂風格推薦；每張卡片會列出相似原因。
+          </p>
           <div className="mt-3 grid gap-2">
-            {relatedFestivals.map((relatedFestival) => (
+            {similarFestivals.map(({ festival: similarFestival, reasons }) => (
               <button
-                key={relatedFestival.id}
+                key={similarFestival.id}
                 type="button"
                 className="related-festival"
-                onClick={() => onFestivalSelect(relatedFestival)}
+                onClick={() => onFestivalSelect(similarFestival)}
               >
-                <span>{relatedFestival.name}</span>
-                <small>{relatedFestival.dateLabel}</small>
+                <span>{similarFestival.name}</span>
+                <small>{similarFestival.dateLabel}</small>
+                <em>{reasons.join("・")}</em>
               </button>
             ))}
           </div>
@@ -645,9 +956,61 @@ function DetailPanel({
 
 export default function FestivalExplorer() {
   const monthRefs = useRef<Record<number, HTMLElement | null>>({});
-  const byMonth = useMemo(() => groupFestivalsByMonth(), []);
   const [selectedFestival, setSelectedFestival] = useState(festivals[0]);
+  const [selectedYear, setSelectedYear] = useState(festivals[0].year);
+  const [selectedArea, setSelectedArea] = useState("all");
   const [activeMonth, setActiveMonth] = useState(7);
+  const [pendingFestivalId, setPendingFestivalId] = useState<string | null>(null);
+
+  const years = useMemo(() => {
+    const latestYear = Math.max(...festivals.map((festival) => festival.year));
+    return Array.from(
+      { length: latestYear - archiveStartYear + 1 },
+      (_, index) => latestYear - index,
+    );
+  }, []);
+
+  const areaOptions = useMemo<AreaFilterOption[]>(() => {
+    const areaMap = new Map<string, AreaFilterOption>();
+
+    for (const festival of festivals) {
+      for (const area of getFestivalPrefectures(festival)) {
+        const current = areaMap.get(area.id);
+        areaMap.set(area.id, {
+          id: area.id,
+          name: area.name,
+          festivalCount: (current?.festivalCount ?? 0) + 1,
+        });
+      }
+    }
+
+    return Array.from(areaMap.values()).sort((left, right) =>
+      left.name.localeCompare(right.name, "ja"),
+    );
+  }, []);
+
+  const visibleFestivals = useMemo(
+    () =>
+      festivals.filter(
+        (festival) =>
+          festival.year === selectedYear &&
+          (selectedArea === "all" ||
+            getFestivalPrefectures(festival).some((area) => area.id === selectedArea)),
+      ),
+    [selectedArea, selectedYear],
+  );
+  const byMonth = useMemo(() => groupFestivalsByMonth(visibleFestivals), [visibleFestivals]);
+  const focusedFestival = visibleFestivals.find(
+    (festival) => festival.id === selectedFestival.id,
+  );
+
+  const applyFestivalSelection = (festival: Festival) => {
+    setSelectedYear(festival.year);
+    setSelectedArea("all");
+    setSelectedFestival(festival);
+    setActiveMonth(festival.month);
+    setPendingFestivalId(festival.id);
+  };
 
   const setMonthRef = (month: number, node: HTMLElement | null) => {
     monthRefs.current[month] = node;
@@ -664,6 +1027,25 @@ export default function FestivalExplorer() {
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    if (!pendingFestivalId) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const card = document.getElementById(`festival-card-${pendingFestivalId}`);
+      if (!card) {
+        return;
+      }
+
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.focus({ preventScroll: true });
+      setPendingFestivalId(null);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pendingFestivalId, selectedArea, selectedYear, visibleFestivals]);
+
   return (
     <main className="min-h-screen bg-[#f5f1e7] text-stone-950">
       <div className="site-header">
@@ -677,6 +1059,65 @@ export default function FestivalExplorer() {
           先用月份找到音樂祭，再從城市、地區、食衣住行樂與 tag 往下挖。
         </p>
       </div>
+
+      <GlobalPerformerSearch
+        onFestivalSelect={applyFestivalSelection}
+      />
+
+      <section className="festival-filter" aria-labelledby="festival-filter-heading">
+        <div className="festival-filter-heading">
+          <div>
+            <span>Festival Finder</span>
+            <h2 id="festival-filter-heading">用年份與地區找音樂祭</h2>
+          </div>
+          <p aria-live="polite">找到 {visibleFestivals.length} 個音樂祭</p>
+        </div>
+
+        <div className="festival-filter-controls">
+          <label>
+            <span>年份</span>
+            <select
+              value={selectedYear}
+              onChange={(event) => {
+                setSelectedYear(Number(event.target.value));
+                setActiveMonth(1);
+              }}
+            >
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year} 年{year < 2026 ? "（歷史）" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>地區</span>
+            <select value={selectedArea} onChange={(event) => setSelectedArea(event.target.value)}>
+              <option value="all">日本全國</option>
+              {areaOptions.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.name}（{area.festivalCount}）
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedYear(years[0]);
+              setSelectedArea("all");
+            }}
+            disabled={selectedYear === years[0] && selectedArea === "all"}
+          >
+            清除篩選
+          </button>
+        </div>
+        <p className="festival-filter-note">
+          地區依會場所在都道府縣整理；年份可回看歷屆資料，尚未匯入的年份會保留空狀態。
+        </p>
+      </section>
 
       <nav className="mobile-month-nav" aria-label="月份快速導航">
         {months.map((month) => (
@@ -693,12 +1134,19 @@ export default function FestivalExplorer() {
 
       <div className="app-layout">
         <div className="timeline-column">
+          {visibleFestivals.length === 0 ? (
+            <div className="archive-empty" role="status">
+              <span>{selectedYear} Archive</span>
+              <h2>這個年份與地區目前沒有資料</h2>
+              <p>歷史入口已保留；之後匯入歷屆陣容與場地資料時，不需要再改瀏覽結構。</p>
+            </div>
+          ) : null}
           {months.map((month) => (
             <MonthSection
               key={month}
               month={month}
               monthFestivals={byMonth[month]}
-              selectedFestival={selectedFestival}
+              selectedFestival={focusedFestival ?? selectedFestival}
               setSelectedFestival={(festival) => {
                 setSelectedFestival(festival);
                 setActiveMonth(festival.month);
@@ -722,14 +1170,13 @@ export default function FestivalExplorer() {
               </button>
             ))}
           </nav>
-          <DetailPanel
-            key={selectedFestival.id}
-            festival={selectedFestival}
-            onFestivalSelect={(festival) => {
-              setSelectedFestival(festival);
-              scrollToMonth(festival.month);
-            }}
-          />
+          {focusedFestival ? (
+            <DetailPanel
+              key={focusedFestival.id}
+              festival={focusedFestival}
+              onFestivalSelect={applyFestivalSelection}
+            />
+          ) : null}
         </div>
       </div>
     </main>
