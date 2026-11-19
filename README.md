@@ -41,6 +41,8 @@ The project uses Next.js, React, TypeScript, Tailwind CSS, vinext, and the OpenA
 
 ## Netlify deployment
 
+Live site: https://festyle-jp.netlify.app
+
 Connect the `liugoldent/festyle` GitHub repository to Netlify. The checked-in `netlify.toml` uses Node.js 22, runs `npm run build:netlify`, and publishes the static `out/` directory. Pushes to the connected production branch trigger a new deploy.
 
 The existing `npm run build` command remains the vinext/Cloudflare build.
