@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
@@ -27,7 +28,6 @@ import {
 
 const travelCategories = Object.keys(categoryMeta) as TravelCategory[];
 const initialPerformerCount = 12;
-const archiveStartYear = 2018;
 
 type AreaFilterOption = {
   id: string;
@@ -308,12 +308,16 @@ function MonthSection({
       <div className="mt-5 grid gap-4">
         {monthFestivals.length > 0 ? (
           monthFestivals.map((festival) => (
-            <FestivalCard
-              key={festival.id}
-              festival={festival}
-              selected={selectedFestival.id === festival.id}
-              onSelect={() => setSelectedFestival(festival)}
-            />
+            <div key={festival.id} className="festival-card-entry">
+              <FestivalCard
+                festival={festival}
+                selected={selectedFestival.id === festival.id}
+                onSelect={() => setSelectedFestival(festival)}
+              />
+              <Link href={`/festivals/${festival.year}/${festival.slug}/`}>
+                查看 {festival.name} 專頁 →
+              </Link>
+            </div>
           ))
         ) : (
           <div className="empty-month">
@@ -631,9 +635,13 @@ function ArtistModal({
 function DetailPanel({
   festival,
   onFestivalSelect,
+  isSummaryCollapsed,
+  onSummaryCollapsedChange,
 }: {
   festival: Festival;
   onFestivalSelect: (festival: Festival) => void;
+  isSummaryCollapsed: boolean;
+  onSummaryCollapsedChange: (collapsed: boolean) => void;
 }) {
   const festivalAreas = getFestivalAreas(festival);
   const festivalTravelItems = getTravelItemsForFestival(festival);
@@ -711,44 +719,58 @@ function DetailPanel({
 
   return (
     <aside className="detail-panel" aria-label={`${festival.name}探索面板`}>
-      <div className="detail-panel-summary">
-        <div className="detail-kicker">Festival Focus</div>
-        <h2 className="mt-2 text-3xl font-black text-stone-950 md:text-4xl">
-          {festival.name}
-        </h2>
-        <p className="mt-3 leading-7 text-stone-700">{festival.description}</p>
+      <div className={`detail-panel-summary${isSummaryCollapsed ? " detail-panel-summary-collapsed" : ""}`}>
+        {!isSummaryCollapsed ? <div className="detail-kicker">Festival Focus</div> : null}
+        <div className="detail-summary-title-row">
+          <h2 className="mt-2 text-3xl font-black text-stone-950 md:text-4xl">
+            {festival.name}
+          </h2>
+          <button
+            type="button"
+            className="detail-summary-toggle"
+            aria-expanded={!isSummaryCollapsed}
+            aria-controls="festival-summary-content"
+            onClick={() => onSummaryCollapsedChange(!isSummaryCollapsed)}
+          >
+            {isSummaryCollapsed ? "展開資訊" : "收起資訊"}
+            <span aria-hidden="true">{isSummaryCollapsed ? "⌄" : "⌃"}</span>
+          </button>
+        </div>
+        <div id="festival-summary-content" hidden={isSummaryCollapsed}>
+          <p className="mt-3 leading-7 text-stone-700">{festival.description}</p>
 
-        <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
-          <div className="fact-box">
-            <dt>月份</dt>
-            <dd>{festival.dateLabel}</dd>
+          <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
+            <div className="fact-box">
+              <dt>月份</dt>
+              <dd>{festival.dateLabel}</dd>
+            </div>
+            <div className="fact-box">
+              <dt>會場</dt>
+              <dd>{festival.venue}</dd>
+            </div>
+          </dl>
+          <div className="festival-external-links">
+            {festival.officialUrl ? (
+              <a
+                className="official-link"
+                href={festival.officialUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                官方網站
+              </a>
+            ) : null}
+            {festival.ticketUrl ? (
+              <a
+                className="official-link ticket-link"
+                href={festival.ticketUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                售票資訊
+              </a>
+            ) : null}
           </div>
-          <div className="fact-box">
-            <dt>會場</dt>
-            <dd>{festival.venue}</dd>
-          </div>
-        </dl>
-        <div className="festival-external-links">
-          {festival.officialUrl ? (
-            <a
-              className="official-link"
-              href={festival.officialUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              官方網站
-            </a>
-          ) : null}
-          {festival.ticketUrl ? (
-            <a
-              className="official-link ticket-link"
-              href={festival.ticketUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              售票資訊
-            </a>
-          ) : null}
         </div>
       </div>
 
@@ -961,12 +983,11 @@ export default function FestivalExplorer() {
   const [selectedArea, setSelectedArea] = useState("all");
   const [activeMonth, setActiveMonth] = useState(7);
   const [pendingFestivalId, setPendingFestivalId] = useState<string | null>(null);
+  const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
 
   const years = useMemo(() => {
-    const latestYear = Math.max(...festivals.map((festival) => festival.year));
-    return Array.from(
-      { length: latestYear - archiveStartYear + 1 },
-      (_, index) => latestYear - index,
+    return Array.from(new Set(festivals.map((festival) => festival.year))).sort(
+      (left, right) => right - left,
     );
   }, []);
 
@@ -1003,6 +1024,7 @@ export default function FestivalExplorer() {
   const focusedFestival = visibleFestivals.find(
     (festival) => festival.id === selectedFestival.id,
   );
+  const displayedFestival = focusedFestival ?? visibleFestivals[0];
 
   const applyFestivalSelection = (festival: Festival) => {
     setSelectedYear(festival.year);
@@ -1053,10 +1075,10 @@ export default function FestivalExplorer() {
           <p className="text-xs font-black uppercase tracking-[0.22em] text-lime-700">
             Festyle
           </p>
-          <h1>日本音樂祭探索工具</h1>
+          <h1>日本音樂祭指南</h1>
         </div>
         <p>
-          先用月份找到音樂祭，再從城市、地區、食衣住行樂與 tag 往下挖。
+          按月份找想去的音樂祭，也看看演出前後的吃住、交通與周邊行程。
         </p>
       </div>
 
@@ -1085,7 +1107,7 @@ export default function FestivalExplorer() {
             >
               {years.map((year) => (
                 <option key={year} value={year}>
-                  {year} 年{year < 2026 ? "（歷史）" : ""}
+                  {year} 年
                 </option>
               ))}
             </select>
@@ -1115,7 +1137,7 @@ export default function FestivalExplorer() {
           </button>
         </div>
         <p className="festival-filter-note">
-          地區依會場所在都道府縣整理；年份可回看歷屆資料，尚未匯入的年份會保留空狀態。
+          地區依會場所在都道府縣整理；年份只顯示已收錄的音樂祭。
         </p>
       </section>
 
@@ -1136,9 +1158,9 @@ export default function FestivalExplorer() {
         <div className="timeline-column">
           {visibleFestivals.length === 0 ? (
             <div className="archive-empty" role="status">
-              <span>{selectedYear} Archive</span>
+              <span>{selectedYear} Festival Finder</span>
               <h2>這個年份與地區目前沒有資料</h2>
-              <p>歷史入口已保留；之後匯入歷屆陣容與場地資料時，不需要再改瀏覽結構。</p>
+              <p>試著選擇其他地區，查看這個年份已收錄的音樂祭。</p>
             </div>
           ) : null}
           {months.map((month) => (
@@ -1146,7 +1168,7 @@ export default function FestivalExplorer() {
               key={month}
               month={month}
               monthFestivals={byMonth[month]}
-              selectedFestival={focusedFestival ?? selectedFestival}
+              selectedFestival={displayedFestival ?? selectedFestival}
               setSelectedFestival={(festival) => {
                 setSelectedFestival(festival);
                 setActiveMonth(festival.month);
@@ -1170,15 +1192,32 @@ export default function FestivalExplorer() {
               </button>
             ))}
           </nav>
-          {focusedFestival ? (
+          {displayedFestival ? (
             <DetailPanel
-              key={focusedFestival.id}
-              festival={focusedFestival}
+              key={displayedFestival.id}
+              festival={displayedFestival}
               onFestivalSelect={applyFestivalSelection}
+              isSummaryCollapsed={isSummaryCollapsed}
+              onSummaryCollapsedChange={setIsSummaryCollapsed}
             />
           ) : null}
         </div>
       </div>
+      <button
+        type="button"
+        className="back-to-top"
+        onClick={() =>
+          window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? "instant"
+              : "smooth",
+          })
+        }
+      >
+        <span aria-hidden="true">↑</span>
+        返回頂部
+      </button>
     </main>
   );
 }

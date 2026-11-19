@@ -1,3 +1,5 @@
+import { areas2027, festivals2027, performerSeeds2027, travelItems2027 } from "./data2027.ts";
+
 export type TravelCategory = "food" | "clothes" | "stay" | "transport" | "fun";
 
 export type Area = {
@@ -2257,6 +2259,7 @@ export const areas: Area[] = [
     summary: "山水人 YAMAUTO 2026 的山林露營會場，需自備完整裝備並遵守水源地規範。",
   },
   ...lateYearGeneratedAreas,
+  ...areas2027,
 ];
 
 export const festivals: Festival[] = [
@@ -3009,6 +3012,7 @@ export const festivals: Festival[] = [
       "2005 年開始、2026 年迎接第 20 回的九日山林共創祭典，包含音樂、舞踏、DJ、藝術、工作坊與共同生活。官方逐日頁目前已涵蓋 2026-08-22 至 2026-08-30 的日程，但多日仍標示 and more；前售已截止，現場參加協力費為單日 5,000 円、前／後半各 9,000 円、九日通票 15,000 円（25 歲以下 10,000 円），僅收現金。官方並提醒當日券照常販售，但停車需另購 3,000 円駐車券，若停車場額滿可能實施入場限制，建議提早進場。",
   },
   ...lateYearFestivalSeeds.map(makeLateYearFestival),
+  ...festivals2027,
 ];
 
 type FestivalTravelSeed = {
@@ -3949,6 +3953,7 @@ export const travelItems: TravelItem[] = [
   {"id": "festival_chapters_kyoto_2026_tea_culture", "areaId": "kyoto", "category": "fun", "title": "両足院與 Ochill 的禪茶體驗", "description": "官方安排建仁寺両足院與 OCHILL TeaRoom 等禪、茶與藝術體驗，含品部東晟的茶文化內容。參加細節由主辦行程統籌，勿把票內限定企畫當作任意時段可入場。", "tags": ["Wonderfruit Chapters: Kyoto", "文化"], "links": [{"label": "官方資訊", "href": "https://chapterskyoto.co/experiences?lang=ja", "kind": "official"}], "relatedFestivalIds": ["festival_chapters_kyoto_2026"]},
   {"id": "festival_samuraisonic_2026_tokushima_culture", "areaId": "chiba", "category": "fun", "title": "徳島藍染與阿波和紙企畫", "description": "2026 官網預告徳島地方創生區，包含藍染、阿波和紙、竹あかり、工作坊與特別合作影像。體驗時段、費用及預約細節仍待公布，可作演出間的文化候選行程。", "tags": ["SAMURAI SONIC vol.8", "文化"], "links": [{"label": "官方資訊", "href": "https://www.samuraisonic.com/regional-revitalization#top", "kind": "official"}], "relatedFestivalIds": ["festival_samuraisonic_2026"]},
   ...lateYearFestivalSeeds.flatMap(makeLateYearTravelItems),
+  ...travelItems2027,
   {"id": "festival_ringo_ongakusai_2026_culture_20260908", "areaId": "venue_ringo_ongakusai_2026", "category": "fun", "title": "りんご舞台的在地 TALK 節目", "description": "9/8 官方時刻表新增りんご舞台サブブース TALK：9/26 由風音、徳谷柿次郎、ISE STANDARD、サンボ參與；9/27「信州ひねくれポップ」與望月啓市、金井俊、鈴木鉄平分享地方產業、葡萄與蔬果等內容。詳細節目與時段依官方圖表。", "tags": ["文化"], "relatedFestivalIds": ["festival_ringo_ongakusai_2026"], "links": [{"label": "官方時刻表", "href": "https://ringofes.info/fes2026/timetable/", "kind": "official"}]},
   {"id": "festival_machi_fes_2026_culture_20260908", "areaId": "venue_machi_fes_2026", "category": "fun", "title": "每天傍晚的上州八木節", "description": "官方三日時刻表均安排上州八木節保存会於 18:25 起演出，可將這段地方傳統藝能排入看團行程；若要搭接駁返赤城駅，需同時考慮步行到小平の里的時間。", "tags": ["文化"], "relatedFestivalIds": ["festival_machi_fes_2026"], "links": [{"label": "官方時刻表", "href": "https://mchfs.net/", "kind": "official"}]},
   {"id": "festival_machi_fes_2026_leisure_20260908", "areaId": "venue_machi_fes_2026", "category": "fun", "title": "小平鍾乳洞的短程探索", "description": "みどり市觀光官方介紹小平鍾乳洞全長 93m、洞內全年約 13–15°C；可在音樂祭前後安排短程自然探索。此為另收費的觀光設施，開放與臨時休業依小平の里公告，不能把音樂祭票視為入洞票。", "tags": ["前後行程"], "relatedFestivalIds": ["festival_machi_fes_2026"], "links": [{"label": "官方時刻表", "href": "https://16106midori.jp/spot/seeing/15/", "kind": "official"}]},
@@ -4016,6 +4021,7 @@ function lineupWithNote(
 }
 
 const performerSeeds: PerformerSeed[] = [
+  ...performerSeeds2027,
   ...lineup("festival_kobe_shuyu_2026", "8/7-8/9", "三宮周辺会場", [
     "てふてふ", "生熊耕治（cune）", "木下徹", "TOUMA", "西村加奈", "エナミハナ。", "かしもとゆか", "佐藤達生",
     "みみみ食堂", "Aisha", "Kohei Okutani", "Mal", "risato", "SHIHO", "The mossh", "toyo and Marco Pagot",
@@ -11533,7 +11539,7 @@ export const artists: Artist[] = Array.from(artistNames.values()).map((name) => 
   slug: encodeURIComponent(getArtistKey(name).replace(/\s+/g, "-")),
   name,
   nameJa: name,
-  summary: "官方 2026 音樂祭出演名單中的表演者。",
+  summary: "已收錄音樂祭官方出演名單中的表演者。",
 }));
 
 export const performances: Performance[] = performerSeeds.map((seed, index) => ({

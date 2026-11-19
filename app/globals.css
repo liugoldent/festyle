@@ -54,6 +54,34 @@ button {
   line-height: 1.8;
 }
 
+.back-to-top {
+  position: fixed;
+  z-index: 30;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  left: calc(1rem + env(safe-area-inset-left));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  border: 1px solid #1c1b17;
+  border-radius: 999px;
+  background: #d9f99d;
+  padding: 0.6rem 0.9rem;
+  color: #1c1b17;
+  box-shadow: 0 4px 14px rgb(28 27 23 / 15%);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.back-to-top:hover {
+  background: #bef264;
+}
+
+.back-to-top:focus-visible {
+  outline: 3px solid #3f6212;
+  outline-offset: 3px;
+}
+
 .global-performer-search {
   margin: 0 1rem 1rem;
   border: 1px solid #1c1b17;
@@ -278,6 +306,21 @@ button {
 .festival-filter-controls label {
   display: grid;
   gap: 0.35rem;
+  position: relative;
+  min-width: 0;
+}
+
+.festival-filter-controls label::after {
+  content: "";
+  position: absolute;
+  right: 1rem;
+  bottom: 1.12rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  pointer-events: none;
 }
 
 .festival-filter-controls label > span {
@@ -296,6 +339,14 @@ button {
   color: #1c1b17;
   font-size: 0.85rem;
   font-weight: 850;
+}
+
+.festival-filter-controls select {
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.75rem;
 }
 
 .festival-filter-controls button {
@@ -377,16 +428,20 @@ button {
 
 .app-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   padding: 1rem;
 }
 
 .timeline-column {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 1rem;
 }
 
 .month-section {
+  min-width: 0;
   scroll-margin-top: 5rem;
   border-top: 1px solid #d6d3d1;
   padding-block: 1.25rem 2rem;
@@ -408,6 +463,7 @@ button {
 
 .festival-card {
   width: 100%;
+  overflow-wrap: anywhere;
   border: 1px solid #d6d3d1;
   border-radius: 8px;
   background: #fffaf0;
@@ -423,6 +479,142 @@ button {
   border-color: #1c1b17;
   box-shadow: 0 18px 0 #1c1b17;
   transform: translateY(-6px);
+}
+
+.festival-card-entry {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.festival-card-entry > a {
+  justify-self: end;
+  color: #385d13;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.festival-card-entry > a:hover {
+  color: #1c1b17;
+}
+
+.festival-detail-page {
+  min-height: 100vh;
+  background: #f5f1e7;
+  color: #1c1b17;
+  padding: 2rem 1rem 5rem;
+}
+
+.festival-detail-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.festival-detail-back {
+  display: inline-block;
+  margin-bottom: 3rem;
+  color: #385d13;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.festival-detail-kicker {
+  color: #385d13;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.festival-detail-content h1 {
+  margin: 0.8rem 0 1.5rem;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 900;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.festival-detail-lead {
+  font-size: 1.15rem;
+  line-height: 1.8;
+}
+
+.festival-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 2.5rem 0;
+}
+
+.festival-detail-facts > div {
+  border-left: 5px solid #1c1b17;
+  background: #fffaf0;
+  padding: 1rem 1.25rem;
+}
+
+.festival-detail-facts dt {
+  margin-bottom: 0.5rem;
+  color: #78716c;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.festival-detail-facts dd {
+  font-size: 1.15rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.festival-detail-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.festival-detail-links a {
+  border: 2px solid #1c1b17;
+  border-radius: 999px;
+  background: #d6f59e;
+  padding: 0.8rem 1.3rem;
+  font-weight: 800;
+}
+
+.festival-detail-links a:hover {
+  background: #ffec8d;
+}
+
+.festival-detail-performers {
+  margin-top: 3.5rem;
+  border-top: 1px solid #c8c0b4;
+  padding-top: 2rem;
+}
+
+.festival-detail-performers h2 {
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
+.festival-detail-performers p {
+  margin-top: 0.5rem;
+  color: #57534e;
+  line-height: 1.7;
+}
+
+.festival-detail-performers ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.3rem;
+}
+
+.festival-detail-performers li {
+  border: 1px solid #c8c0b4;
+  border-radius: 999px;
+  background: #fffaf0;
+  padding: 0.45rem 0.85rem;
+  font-weight: 700;
 }
 
 .empty-month {
@@ -441,6 +633,7 @@ button {
 
 .right-rail {
   display: grid;
+  min-width: 0;
   gap: 1rem;
   align-content: start;
 }
@@ -454,6 +647,70 @@ button {
   border-radius: 8px;
   background: #fffdf7;
   padding: 1rem;
+}
+
+.detail-panel-summary {
+  position: relative;
+}
+
+.detail-summary-title-row h2 {
+  overflow-wrap: anywhere;
+}
+
+.detail-panel-summary:not(.detail-panel-summary-collapsed) .detail-kicker {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+}
+
+.detail-summary-toggle {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+  border: 1px solid #a8a29e;
+  border-radius: 999px;
+  background: #f5f1e7;
+  padding: 0.45rem 0.7rem;
+  color: #1c1b17;
+  font-size: 0.75rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.detail-summary-toggle:hover {
+  background: #d9f99d;
+}
+
+.detail-summary-toggle:focus-visible {
+  outline: 3px solid #3f6212;
+  outline-offset: 3px;
+}
+
+.detail-summary-toggle span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.detail-panel-summary-collapsed .detail-summary-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.detail-panel-summary-collapsed .detail-summary-title-row h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.detail-panel-summary-collapsed .detail-summary-toggle {
+  position: static;
+  flex: 0 0 auto;
 }
 
 .detail-kicker,

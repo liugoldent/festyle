@@ -6,13 +6,13 @@ const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
 const templateRoot = new URL("../", import.meta.url);
 
-async function render() {
+async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(`http://localhost${path}`, {
       headers: { accept: "text/html" },
     }),
     {
@@ -27,6 +27,17 @@ async function render() {
   );
 }
 
+test("festival pages have their own crawlable metadata and links", async () => {
+  const response = await render("/festivals/2027/mega-vegas-2027/");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<h1[^>]*>MEGA VEGAS 2027<\/h1>/);
+  assert.match(html, /<title>MEGA VEGAS 2027｜日期、地點與演出陣容/);
+  assert.match(html, /rel="canonical" href="https:\/\/festyle-jp\.netlify\.app\/festivals\/2027\/mega-vegas-2027\/"/);
+  assert.match(html, /3\/20-3\/21/);
+  assert.match(html, /官方網站/);
+});
+
 test("server-renders the festival explorer", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -34,12 +45,19 @@ test("server-renders the festival explorer", async () => {
 
   const html = await response.text();
   assert.doesNotMatch(html, developmentPreviewMeta);
-  assert.match(html, /<title>Festyle \| 日本音樂祭探索工具<\/title>/i);
-  assert.match(html, /日本音樂祭探索工具/);
+  assert.match(html, /<title>Festyle \| 2026・2027 日本音樂祭日期、陣容與旅行指南<\/title>/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/festyle-jp\.netlify\.app\/"/);
+  assert.match(html, /property="og:image" content="https:\/\/festyle-jp\.netlify\.app\/og-image\.png"/);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
+  assert.match(html, /application\/ld\+json/);
+  assert.match(html, /"@type":"CollectionPage"/);
+  assert.match(html, /日本音樂祭指南/);
+  assert.match(html, /返回頂部/);
   assert.match(html, /全站搜尋表演人員/);
   assert.match(html, /用年份與地區找音樂祭/);
   assert.match(html, /日本全國/);
-  assert.match(html, /2018(?:<!-- -->)? 年(?:<!-- -->)?（歷史）/);
+  assert.match(html, /2027(?:<!-- -->)? 年/);
+  assert.doesNotMatch(html, /2018(?:<!-- -->)? 年/);
   assert.match(html, /placeholder="例如：10-FEET、あいみょん"/);
   assert.match(html, /京都大作戦/);
   assert.match(html, /售票資訊/);
@@ -120,6 +138,7 @@ test("server-renders the festival explorer", async () => {
   assert.match(html, /相似音樂祭/);
   assert.match(html, /每張卡片會列出相似原因/);
   assert.match(html, /食衣住行樂/);
+  assert.match(html, /收起資訊/);
 });
 
 test("removes starter preview wiring", async () => {
@@ -133,7 +152,7 @@ test("removes starter preview wiring", async () => {
   ]);
 
   assert.match(page, /<FestivalExplorer \/>/);
-  assert.match(layout, /title:\s*"Festyle \| 日本音樂祭探索工具"/);
+  assert.match(layout, /title:\s*"Festyle \| 2026・2027 日本音樂祭日期、陣容與旅行指南"/);
   assert.match(css, /\.regional-map/);
   assert.match(css, /\.detail-panel-summary\s*\{[\s\S]*?position:\s*sticky/);
   assert.match(css, /\.travel-item-links/);
@@ -261,9 +280,10 @@ test("removes starter preview wiring", async () => {
   assert.match(explorer, /pendingFestivalId/);
   assert.match(explorer, /document\.getElementById\(`festival-card-/);
   assert.match(explorer, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
-  assert.match(explorer, /archiveStartYear = 2018/);
+  assert.match(explorer, /new Set\(festivals\.map\(\(festival\) => festival\.year\)\)/);
   assert.match(explorer, /getFestivalPrefectures/);
-  assert.match(explorer, /className="detail-panel-summary"/);
+  assert.match(explorer, /detail-panel-summary-collapsed/);
+  assert.match(explorer, /aria-expanded=\{!isSummaryCollapsed\}/);
   assert.match(explorer, /resultsByMonth/);
   assert.match(explorer, /查看音樂祭 →/);
   assert.match(explorer, /找到 \{filteredPerformers\.length\} 筆符合/);
@@ -326,6 +346,67 @@ test("official festival updates keep venue, cancellation and artist relationship
     performance.festivalId === "festival_tomakomai_mirai_fest_2026" && !performance.note?.startsWith("MC"),
   );
   assert.ok(tomakomai.every((performance) => ["9/12", "9/13"].includes(performance.dateLabel)));
+});
+
+test("2027 announced festivals have verified dates and only announced performers", async () => {
+  const { festivals, areas, artists, performances, travelItems } = await import("../app/data.ts");
+  const ids = [
+    "festival_fukuoka_music_fes_2027",
+    "festival_gmo_sonic_2027",
+    "festival_hibiya_music_fes_2027",
+    "festival_ultra_japan_2027",
+  ];
+  const byId = new Map(festivals.map((festival) => [festival.id, festival]));
+  const areaIds = new Set(areas.map((area) => area.id));
+  const artistById = new Map(artists.map((artist) => [artist.id, artist.name]));
+
+  for (const id of ids) {
+    const festival = byId.get(id);
+    assert.ok(festival);
+    assert.equal(festival.year, 2027);
+    assert.ok(festival.startsOn.startsWith("2027-"));
+    assert.ok(festival.areaIds.every((areaId) => areaIds.has(areaId)));
+    assert.deepEqual(
+      new Set(travelItems.filter((item) => item.relatedFestivalIds.includes(id)).map((item) => item.category)),
+      new Set(["food", "clothes", "stay", "transport", "fun"]),
+    );
+  }
+
+  assert.equal(byId.get(ids[0]).startsOn, "2027-01-30");
+  assert.equal(byId.get(ids[1]).startsOn, "2027-04-03");
+  assert.equal(byId.get(ids[2]).startsOn, "2027-06-05");
+  assert.equal(byId.get(ids[3]).startsOn, "2027-09-18");
+  const fukuokaRows = performances.filter((row) => row.festivalId === ids[0]);
+  assert.equal(fukuokaRows.length, 22);
+  assert.ok(fukuokaRows.some((row) => row.dateLabel === "1/30" && artistById.get(row.artistId) === "Suchmos"));
+  assert.ok(fukuokaRows.some((row) => row.dateLabel === "1/31" && artistById.get(row.artistId) === "Kis-My-Ft2"));
+  assert.equal(performances.filter((row) => ids.slice(1).includes(row.festivalId)).length, 0);
+});
+
+test("MEGA VEGAS 2027 keeps the announced lineup separate from unknown day splits", async () => {
+  const { festivals, artists, performances, travelItems, areas } = await import("../app/data.ts");
+  const id = "festival_mega_vegas_2027";
+  const festival = festivals.find((entry) => entry.id === id);
+  assert.ok(festival);
+  assert.equal(festival.startsOn, "2027-03-20");
+  assert.equal(festival.endsOn, "2027-03-21");
+  assert.equal(festival.venue, "神戸ワールド記念ホール");
+  assert.equal(festival.ticketUrl, "https://eplus.jp/sf/detail/4203630001-P0030003");
+  assert.ok(festival.areaIds.every((areaId) => areas.some((area) => area.id === areaId)));
+
+  const rows = performances.filter((row) => row.festivalId === id);
+  const artistById = new Map(artists.map((artist) => [artist.id, artist.name]));
+  assert.equal(rows.length, 6);
+  assert.deepEqual(
+    rows.filter((row) => artistById.get(row.artistId) === "Fear, and Loathing in Las Vegas")
+      .map((row) => row.dateLabel),
+    ["3/20", "3/21"],
+  );
+  assert.equal(rows.filter((row) => !row.dateLabel).length, 4);
+  assert.deepEqual(
+    new Set(travelItems.filter((item) => item.relatedFestivalIds.includes(id)).map((item) => item.category)),
+    new Set(["food", "clothes", "stay", "transport", "fun"]),
+  );
 });
 
 test("September source imports preserve artist names, dates and venue grouping", async () => {

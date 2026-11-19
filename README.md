@@ -1,6 +1,6 @@
 # Festyle
 
-日本音樂祭探索工具。第一版以音樂祭為主入口，讓使用者從 1 月到 12 月瀏覽音樂祭，再一路挖到城市、地區、食衣住行樂與相關 tag。
+日本音樂祭指南。第一版以音樂祭為主入口，讓使用者從 1 月到 12 月瀏覽音樂祭，再一路挖到城市、地區、食衣住行樂與相關 tag。
 
 ## Current MVP
 
@@ -42,6 +42,8 @@ The project uses Next.js, React, TypeScript, Tailwind CSS, vinext, and the OpenA
 ## Netlify deployment
 
 Live site: https://festyle-jp.netlify.app
+
+SEO metadata、canonical、robots.txt、sitemap.xml 與各音樂祭專頁共用 `app/site.ts` 的正式網址。若改用自訂網域，請先更新該常數，再重新部署並將 `/sitemap.xml` 提交至 Google Search Console。
 
 Connect the `liugoldent/festyle` GitHub repository to Netlify. The checked-in `netlify.toml` uses Node.js 22, runs `npm run build:netlify`, and publishes the static `out/` directory. Pushes to the connected production branch trigger a new deploy.
 
