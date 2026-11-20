@@ -38,6 +38,24 @@ test("festival pages have their own crawlable metadata and links", async () => {
   assert.match(html, /官方網站/);
 });
 
+test("concert performances have distinct crawlable pages and official links", async () => {
+  const response = await render("/concerts/2027/aina-the-end-0307/");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /AiNA THE END LIVE TOUR 2027/);
+  assert.match(html, /3\/7/);
+  assert.match(html, /神戸国際会館こくさいホール/);
+  assert.match(html, /ainatheend\.jp\/news\/detail\.php\?id=1136806/);
+  assert.match(html, /Japan Concerts/);
+
+  const zutomayo = await render("/concerts/2027/zutomayo-0115/");
+  assert.equal(zutomayo.status, 200);
+  const zutomayoHtml = await zutomayo.text();
+  assert.match(zutomayoHtml, /アピクラ電機/);
+  assert.match(zutomayoHtml, /広島文化学園HBGホール/);
+  assert.match(zutomayoHtml, /zutomayo\.net\/apicula\//);
+});
+
 test("server-renders the festival explorer", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -45,16 +63,18 @@ test("server-renders the festival explorer", async () => {
 
   const html = await response.text();
   assert.doesNotMatch(html, developmentPreviewMeta);
-  assert.match(html, /<title>Festyle \| 2026・2027 日本音樂祭日期、陣容與旅行指南<\/title>/i);
+  assert.match(html, /<title>Festyle \| 2026・2027 日本音樂祭與專場指南<\/title>/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/festyle-jp\.netlify\.app\/"/);
   assert.match(html, /property="og:image" content="https:\/\/festyle-jp\.netlify\.app\/og-image\.png"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
   assert.match(html, /application\/ld\+json/);
   assert.match(html, /"@type":"CollectionPage"/);
-  assert.match(html, /日本音樂祭指南/);
+  assert.match(html, /日本音樂祭與專場指南/);
   assert.match(html, /返回頂部/);
   assert.match(html, /全站搜尋表演人員/);
-  assert.match(html, /用年份與地區找音樂祭/);
+  assert.match(html, /用年份與地區找音樂祭、專場/);
+  assert.match(html, /顯示：(?:<!-- -->)?全部/);
+  assert.match(html, /event-filter-toggle/);
   assert.match(html, /日本全國/);
   assert.match(html, /2027(?:<!-- -->)? 年/);
   assert.doesNotMatch(html, /2018(?:<!-- -->)? 年/);
@@ -152,7 +172,7 @@ test("removes starter preview wiring", async () => {
   ]);
 
   assert.match(page, /<FestivalExplorer \/>/);
-  assert.match(layout, /title:\s*"Festyle \| 2026・2027 日本音樂祭日期、陣容與旅行指南"/);
+  assert.match(layout, /title:\s*"Festyle \| 2026・2027 日本音樂祭與專場指南"/);
   assert.match(css, /\.regional-map/);
   assert.match(css, /\.detail-panel-summary\s*\{[\s\S]*?position:\s*sticky/);
   assert.match(css, /\.travel-item-links/);
@@ -285,7 +305,7 @@ test("removes starter preview wiring", async () => {
   assert.match(explorer, /detail-panel-summary-collapsed/);
   assert.match(explorer, /aria-expanded=\{!isSummaryCollapsed\}/);
   assert.match(explorer, /resultsByMonth/);
-  assert.match(explorer, /查看音樂祭 →/);
+  assert.match(explorer, /查看\{eventType\(result\.festival\)\} →/);
   assert.match(explorer, /找到 \{filteredPerformers\.length\} 筆符合/);
   assert.match(explorer, /performance\.note/);
   assert.match(explorer, /performer\.note/);

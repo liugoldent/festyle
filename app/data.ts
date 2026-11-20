@@ -1,4 +1,5 @@
 import { areas2027, festivals2027, performerSeeds2027, travelItems2027 } from "./data2027.ts";
+import { concertAreas2027, concerts2027 } from "./concerts2027.ts";
 
 export type TravelCategory = "food" | "clothes" | "stay" | "transport" | "fun";
 
@@ -54,6 +55,8 @@ export type Place = {
 
 export type Festival = {
   id: string;
+  kind?: "festival" | "concert";
+  artistName?: string;
   slug: string;
   name: string;
   nameJa?: string;
@@ -2262,6 +2265,10 @@ export const areas: Area[] = [
   ...areas2027,
 ];
 
+for (const area of concertAreas2027) {
+  if (!areas.some((existing) => existing.id === area.id)) areas.push(area);
+}
+
 export const festivals: Festival[] = [
   {
     id: "festival_kyoto_daisakusen",
@@ -3013,6 +3020,7 @@ export const festivals: Festival[] = [
   },
   ...lateYearFestivalSeeds.map(makeLateYearFestival),
   ...festivals2027,
+  ...concerts2027,
 ];
 
 type FestivalTravelSeed = {
@@ -4022,6 +4030,11 @@ function lineupWithNote(
 
 const performerSeeds: PerformerSeed[] = [
   ...performerSeeds2027,
+  ...concerts2027.map((concert) => ({
+    festivalId: concert.id,
+    artistName: concert.artistName ?? "",
+    dateLabel: concert.dateLabel,
+  })),
   ...lineup("festival_kobe_shuyu_2026", "8/7-8/9", "三宮周辺会場", [
     "てふてふ", "生熊耕治（cune）", "木下徹", "TOUMA", "西村加奈", "エナミハナ。", "かしもとゆか", "佐藤達生",
     "みみみ食堂", "Aisha", "Kohei Okutani", "Mal", "risato", "SHIHO", "The mossh", "toyo and Marco Pagot",
@@ -11539,7 +11552,7 @@ export const artists: Artist[] = Array.from(artistNames.values()).map((name) => 
   slug: encodeURIComponent(getArtistKey(name).replace(/\s+/g, "-")),
   name,
   nameJa: name,
-  summary: "已收錄音樂祭官方出演名單中的表演者。",
+  summary: "已收錄官方演出名單中的表演者。",
 }));
 
 export const performances: Performance[] = performerSeeds.map((seed, index) => ({
@@ -11781,7 +11794,7 @@ const genreSimilarityLabels: Record<string, string> = {
 
 export function getSimilarFestivals(festival: Festival, limit = 3): SimilarFestival[] {
   return festivals
-    .filter((candidate) => candidate.id !== festival.id)
+    .filter((candidate) => candidate.id !== festival.id && candidate.kind !== "concert")
     .map((candidate) => {
       const sharedGenres = festival.genres.filter((genre) =>
         candidate.genres.includes(genre),

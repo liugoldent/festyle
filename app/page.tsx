@@ -15,9 +15,9 @@ const structuredData = {
       "@type": "CollectionPage",
       "@id": `${siteUrl}/#webpage`,
       url: `${siteUrl}/`,
-      name: "Festyle | 2026・2027 日本音樂祭指南",
+      name: "Festyle | 2026・2027 日本音樂祭與專場指南",
       description:
-        "依年份、月份與地區探索日本音樂祭日期、地點、演出陣容、售票資訊及周邊旅行提案。",
+        "依年份、月份與地區探索日本音樂祭與專場日期、地點、演出陣容及售票資訊。",
       inLanguage: "zh-Hant",
       isPartOf: { "@id": `${siteUrl}/#website` },
       about: { "@type": "Thing", name: "日本音樂祭" },

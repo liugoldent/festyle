@@ -8,7 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${siteUrl}/`, changeFrequency: "daily", priority: 1 },
     ...festivals.map((festival) => ({
-      url: `${siteUrl}/festivals/${festival.year}/${festival.slug}/`,
+      url: `${siteUrl}/${festival.kind === "concert" ? "concerts" : "festivals"}/${festival.year}/${festival.slug}/`,
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),

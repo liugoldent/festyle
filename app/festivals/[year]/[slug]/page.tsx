@@ -6,11 +6,11 @@ import { festivals, getArea, getPerformersForFestival } from "../../../data";
 type FestivalParams = { year: string; slug: string };
 
 function findFestival({ year, slug }: FestivalParams) {
-  return festivals.find((festival) => festival.year === Number(year) && festival.slug === slug);
+  return festivals.find((festival) => festival.kind !== "concert" && festival.year === Number(year) && festival.slug === slug);
 }
 
 export function generateStaticParams(): FestivalParams[] {
-  return festivals.map((festival) => ({ year: String(festival.year), slug: festival.slug }));
+  return festivals.filter((festival) => festival.kind !== "concert").map((festival) => ({ year: String(festival.year), slug: festival.slug }));
 }
 
 export async function generateMetadata({
@@ -59,7 +59,7 @@ export default async function FestivalPage({
   return (
     <main className="festival-detail-page">
       <div className="festival-detail-content">
-        <Link className="festival-detail-back" href="/">← 返回日本音樂祭指南</Link>
+        <Link className="festival-detail-back" href="/">← 返回日本音樂祭與專場指南</Link>
         <p className="festival-detail-kicker">Festyle / {festival.year} Japan Music Festivals</p>
         <h1>{festival.name}</h1>
         <p className="festival-detail-lead">{festival.description}</p>

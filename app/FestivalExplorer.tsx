@@ -35,6 +35,18 @@ type AreaFilterOption = {
   festivalCount: number;
 };
 
+type EventFilter = "all" | "festival" | "concert";
+
+const eventFilterLabels: Record<EventFilter, string> = {
+  all: "全部",
+  festival: "音樂祭",
+  concert: "專場",
+};
+
+function eventType(festival: Festival) {
+  return festival.kind === "concert" ? "專場" : "音樂祭";
+}
+
 type GlobalPerformerResult = {
   artist: Artist;
   festival: Festival;
@@ -140,7 +152,7 @@ function GlobalPerformerSearch({
       <div className="global-search-copy">
         <span>Artist Finder</span>
         <h2 id="global-search-heading">全站搜尋表演人員</h2>
-        <p>輸入藝人名稱，查看他在哪幾月參加哪些音樂祭。</p>
+        <p>輸入藝人名稱，查看他在哪幾月參加哪些音樂祭或專場。</p>
       </div>
 
       <label className="global-search-input">
@@ -165,7 +177,7 @@ function GlobalPerformerSearch({
           {results.length > 0 ? (
             <>
               <p className="global-search-summary" role="status">
-                找到 {matchedArtistCount} 位表演人員，共參加 {results.length} 個音樂祭
+                找到 {matchedArtistCount} 位表演人員，共有 {results.length} 場演出
               </p>
               <div className="global-search-months">
                 {Array.from(resultsByMonth.entries()).map(([month, monthResults]) => (
@@ -197,7 +209,7 @@ function GlobalPerformerSearch({
                               )
                               .join(" / ")}
                           </small>
-                          <span className="global-result-action">查看音樂祭 →</span>
+                          <span className="global-result-action">查看{eventType(result.festival)} →</span>
                         </button>
                       ))}
                     </div>
@@ -244,15 +256,15 @@ function FestivalCard({
       id={`festival-card-${festival.id}`}
       type="button"
       onClick={onSelect}
-      className={`festival-card group text-left ${selected ? "festival-card-selected" : ""}`}
+      className={`festival-card group text-left ${festival.kind === "concert" ? "concert-card" : ""} ${selected ? "festival-card-selected" : ""}`}
       aria-pressed={selected}
     >
       <span className="flex items-center justify-between gap-3">
         <span className="rounded-full border border-stone-300 bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-stone-600">
           {festival.year} / {festival.dateLabel}
         </span>
-        <span className="text-xs font-semibold text-stone-500">
-          {festival.genres.join(" / ")}
+        <span className="event-kind-label">
+          {eventType(festival)}
         </span>
       </span>
       <span className="mt-5 block text-3xl font-black text-stone-950 md:text-5xl">
@@ -262,7 +274,7 @@ function FestivalCard({
         {city?.name} / {festival.venue}
       </span>
       <span className="mt-4 block text-base leading-7 text-stone-700">
-        {festival.description}
+          {festival.artistName ? `${festival.artistName}・` : ""}{festival.description}
       </span>
       <span className="mt-5 flex flex-wrap gap-2">
         {tags.map((tag) => (
@@ -302,7 +314,7 @@ function MonthSection({
         <h2 id={`month-${month}-heading`}>
           <MonthLabel month={month} />
         </h2>
-        <p>{monthFestivals.length > 0 ? `${monthFestivals.length} 個音樂祭` : "待新增音樂祭"}</p>
+        <p>{monthFestivals.length > 0 ? `${monthFestivals.length} 場演出` : "待新增演出"}</p>
       </div>
 
       <div className="mt-5 grid gap-4">
@@ -314,15 +326,15 @@ function MonthSection({
                 selected={selectedFestival.id === festival.id}
                 onSelect={() => setSelectedFestival(festival)}
               />
-              <Link href={`/festivals/${festival.year}/${festival.slug}/`}>
-                查看 {festival.name} 專頁 →
+              <Link href={`/${festival.kind === "concert" ? "concerts" : "festivals"}/${festival.year}/${festival.slug}/`}>
+                查看 {festival.name} {eventType(festival)}專頁 →
               </Link>
             </div>
           ))
         ) : (
           <div className="empty-month">
             <span className="text-sm font-bold text-stone-500">Curating</span>
-            <p>這個月份還沒有放入資料。之後可以從官方日期、城市與風格慢慢補齊。</p>
+            <p>這個月份還沒有放入資料。之後會依官方公告補齊。</p>
           </div>
         )}
       </div>
@@ -629,6 +641,28 @@ function ArtistModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function ConcertDetailPanel({ festival }: { festival: Festival }) {
+  const area = getArea(festival.cityId);
+  return (
+    <aside className="detail-panel concert-detail-panel" aria-label={`${festival.name}專場資訊`}>
+      <div className="detail-kicker">Concert Focus / 專場</div>
+      <h2 className="mt-3 text-3xl font-black md:text-4xl">{festival.name}</h2>
+      <p className="mt-3 text-lg font-bold">{festival.artistName}</p>
+      <p className="mt-4 leading-7">{festival.description}</p>
+      <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
+        <div className="fact-box"><dt>日期</dt><dd>{festival.year} 年 {festival.dateLabel}</dd></div>
+        <div className="fact-box"><dt>地區</dt><dd>{area?.name ?? "日本"}</dd></div>
+        <div className="fact-box concert-venue-fact"><dt>會場</dt><dd>{festival.venue}</dd></div>
+      </dl>
+      <div className="festival-external-links">
+        <a className="official-link" href={festival.officialUrl} target="_blank" rel="noreferrer">官方巡演資訊 ↗</a>
+        <a className="official-link ticket-link" href={festival.ticketUrl} target="_blank" rel="noreferrer">官方售票資訊 ↗</a>
+      </div>
+      <p className="mt-5 text-sm leading-6 text-stone-600">場次與票務可能變更，出發與購票前請以官方頁面為準。</p>
+    </aside>
   );
 }
 
@@ -984,6 +1018,8 @@ export default function FestivalExplorer() {
   const [activeMonth, setActiveMonth] = useState(7);
   const [pendingFestivalId, setPendingFestivalId] = useState<string | null>(null);
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
+  const [eventFilter, setEventFilter] = useState<EventFilter>("all");
+  const [isEventFilterOpen, setIsEventFilterOpen] = useState(false);
 
   const years = useMemo(() => {
     return Array.from(new Set(festivals.map((festival) => festival.year))).sort(
@@ -1015,10 +1051,11 @@ export default function FestivalExplorer() {
       festivals.filter(
         (festival) =>
           festival.year === selectedYear &&
+          (eventFilter === "all" || (festival.kind ?? "festival") === eventFilter) &&
           (selectedArea === "all" ||
             getFestivalPrefectures(festival).some((area) => area.id === selectedArea)),
       ),
-    [selectedArea, selectedYear],
+    [eventFilter, selectedArea, selectedYear],
   );
   const byMonth = useMemo(() => groupFestivalsByMonth(visibleFestivals), [visibleFestivals]);
   const focusedFestival = visibleFestivals.find(
@@ -1028,6 +1065,7 @@ export default function FestivalExplorer() {
 
   const applyFestivalSelection = (festival: Festival) => {
     setSelectedYear(festival.year);
+    setEventFilter("all");
     setSelectedArea("all");
     setSelectedFestival(festival);
     setActiveMonth(festival.month);
@@ -1075,10 +1113,10 @@ export default function FestivalExplorer() {
           <p className="text-xs font-black uppercase tracking-[0.22em] text-lime-700">
             Festyle
           </p>
-          <h1>日本音樂祭指南</h1>
+          <h1>日本音樂祭與專場指南</h1>
         </div>
         <p>
-          按月份找想去的音樂祭，也看看演出前後的吃住、交通與周邊行程。
+          按月份找想去的音樂祭與專場，也看看演出前後的吃住、交通與周邊行程。
         </p>
       </div>
 
@@ -1090,9 +1128,9 @@ export default function FestivalExplorer() {
         <div className="festival-filter-heading">
           <div>
             <span>Festival Finder</span>
-            <h2 id="festival-filter-heading">用年份與地區找音樂祭</h2>
+            <h2 id="festival-filter-heading">用年份與地區找音樂祭、專場</h2>
           </div>
-          <p aria-live="polite">找到 {visibleFestivals.length} 個音樂祭</p>
+          <p aria-live="polite">找到 {visibleFestivals.length} 場演出</p>
         </div>
 
         <div className="festival-filter-controls">
@@ -1130,14 +1168,15 @@ export default function FestivalExplorer() {
             onClick={() => {
               setSelectedYear(years[0]);
               setSelectedArea("all");
+              setEventFilter("all");
             }}
-            disabled={selectedYear === years[0] && selectedArea === "all"}
+            disabled={selectedYear === years[0] && selectedArea === "all" && eventFilter === "all"}
           >
             清除篩選
           </button>
         </div>
         <p className="festival-filter-note">
-          地區依會場所在都道府縣整理；年份只顯示已收錄的音樂祭。
+          地區依會場所在都道府縣整理；年份只顯示已收錄的演出。
         </p>
       </section>
 
@@ -1160,7 +1199,7 @@ export default function FestivalExplorer() {
             <div className="archive-empty" role="status">
               <span>{selectedYear} Festival Finder</span>
               <h2>這個年份與地區目前沒有資料</h2>
-              <p>試著選擇其他地區，查看這個年份已收錄的音樂祭。</p>
+              <p>試著選擇其他地區或演出類型，查看已收錄的演出。</p>
             </div>
           ) : null}
           {months.map((month) => (
@@ -1193,15 +1232,42 @@ export default function FestivalExplorer() {
             ))}
           </nav>
           {displayedFestival ? (
-            <DetailPanel
-              key={displayedFestival.id}
-              festival={displayedFestival}
-              onFestivalSelect={applyFestivalSelection}
-              isSummaryCollapsed={isSummaryCollapsed}
-              onSummaryCollapsedChange={setIsSummaryCollapsed}
-            />
+            displayedFestival.kind === "concert" ? (
+              <ConcertDetailPanel key={displayedFestival.id} festival={displayedFestival} />
+            ) : (
+              <DetailPanel
+                key={displayedFestival.id}
+                festival={displayedFestival}
+                onFestivalSelect={applyFestivalSelection}
+                isSummaryCollapsed={isSummaryCollapsed}
+                onSummaryCollapsedChange={setIsSummaryCollapsed}
+              />
+            )
           ) : null}
         </div>
+      </div>
+      <div className="floating-actions">
+        {isEventFilterOpen ? (
+          <div id="event-filter-menu" className="event-filter-menu" role="group" aria-label="顯示演出類型">
+            {(Object.keys(eventFilterLabels) as EventFilter[]).map((filter) => (
+              <button key={filter} type="button" aria-pressed={eventFilter === filter} onClick={() => {
+                setEventFilter(filter);
+                if (filter === "concert") {
+                  setSelectedYear(2027);
+                  setSelectedArea("all");
+                }
+                setActiveMonth(1);
+                setIsEventFilterOpen(false);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}>
+                {eventFilterLabels[filter]}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <button type="button" className="event-filter-toggle" aria-expanded={isEventFilterOpen} aria-controls="event-filter-menu" onClick={() => setIsEventFilterOpen((open) => !open)}>
+          <span aria-hidden="true">◎</span> 顯示：{eventFilterLabels[eventFilter]}
+        </button>
       </div>
       <button
         type="button"
